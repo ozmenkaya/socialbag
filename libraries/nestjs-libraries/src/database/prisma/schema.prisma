@@ -45,6 +45,8 @@ model Organization {
   webhooks            Webhooks[]
   oauthApp            OAuthApp[]
   oauthAuthorizations OAuthAuthorization[]
+  adsConnections      AdsConnection[]
+  postBoosts          PostBoost[]
 
   @@index([apiKey])
   @@index([streakSince])
@@ -493,6 +495,7 @@ model Post {
   submittedForOrder          Orders?                   @relation(fields: [submittedForOrderId], references: [id])
   submittedForOrganization   Organization?             @relation("submittedForOrg", fields: [submittedForOrganizationId], references: [id])
   tags                       TagsPosts[]
+  boosts                     PostBoost[]
 
   @@index([group])
   @@index([batchId])
@@ -671,6 +674,53 @@ model Webhooks {
   organization   Organization           @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId])
+  @@index([deletedAt])
+}
+
+model AdsConnection {
+  id              String       @id @default(uuid())
+  organizationId  String
+  provider        String
+  internalId      String
+  name            String
+  picture         String?
+  token           String
+  tokenExpiration DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  boosts          PostBoost[]
+
+  @@unique([organizationId, provider, internalId])
+  @@index([organizationId])
+  @@index([deletedAt])
+}
+
+model PostBoost {
+  id              String        @id @default(uuid())
+  organizationId  String
+  postId          String
+  connectionId    String
+  adAccountId     String
+  campaignId      String
+  adSetId         String
+  adId            String
+  objective       String
+  dailyBudget     Int
+  currency        String
+  startDate       DateTime
+  endDate         DateTime
+  status          String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+  organization    Organization  @relation(fields: [organizationId], references: [id])
+  post            Post          @relation(fields: [postId], references: [id])
+  connection      AdsConnection @relation(fields: [connectionId], references: [id])
+
+  @@index([organizationId])
+  @@index([postId])
   @@index([deletedAt])
 }
 

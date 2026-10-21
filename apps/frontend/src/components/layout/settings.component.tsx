@@ -34,6 +34,7 @@ import { GlobalSettings } from '@gitroom/frontend/components/settings/global.set
 import { AppsComponent } from '@gitroom/frontend/components/settings/apps.component';
 import { ThirdPartyComponent } from '@gitroom/frontend/components/third-parties/third-party.component';
 import { Plugs } from '@gitroom/frontend/components/plugs/plugs';
+import { AdsConnectionsComponent } from '@gitroom/frontend/components/ads/ads.connections.component';
 export const SettingsPopup: FC<{
   getRef?: Ref<any>;
 }> = (props) => {
@@ -107,6 +108,7 @@ export const SettingsPopup: FC<{
       arr.push({ tab: 'signatures', label: t('signatures', 'Signatures') });
     }
     arr.push({ tab: 'integrations', label: t('integrations', 'Integrations') });
+    arr.push({ tab: 'ads', label: t('ads_accounts', 'Ad Accounts') });
     arr.push({ tab: 'plugs', label: t('plugs', 'Plugs') });
     arr.push({ tab: 'apps', label: t('apps', 'Apps') });
 
@@ -210,6 +212,12 @@ export const SettingsPopup: FC<{
               {tab === 'integrations' && (
                 <div>
                   <ThirdPartyComponent />
+                </div>
+              )}
+
+              {tab === 'ads' && (
+                <div>
+                  <AdsConnectionsComponent />
                 </div>
               )}
 

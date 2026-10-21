@@ -47,6 +47,8 @@ import SafeImage from '@gitroom/react/helpers/safe.image';
 import { extend } from 'dayjs';
 import { isUSCitizen } from './helpers/isuscitizen.utils';
 import { StatisticsModal } from '@gitroom/frontend/components/launches/statistics';
+import { BoostModal } from '@gitroom/frontend/components/ads/boost.modal';
+import { useAdsProviders } from '@gitroom/frontend/components/ads/ads.connections.component';
 import { MissingReleaseModal } from '@gitroom/frontend/components/launches/missing-release.modal';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import i18next from 'i18next';
@@ -391,7 +393,24 @@ const usePostActions = (onMutate?: () => void) => {
     [fetch, toaster, t]
   );
 
-  return { editPost, deletePost, copyDebugJson, openStatistics, openMissingRelease, openPost };
+  const openBoost = useCallback(
+    (id: string) => () => {
+      modal.openModal({
+        title: t('promote_post', 'Promote post'),
+        closeOnClickOutside: true,
+        closeOnEscape: true,
+        withCloseButton: true,
+        classNames: {
+          modal: 'w-[100%] max-w-[800px]',
+        },
+        children: <BoostModal postId={id} />,
+        size: '60%',
+      });
+    },
+    [modal, t]
+  );
+
+  return { editPost, deletePost, copyDebugJson, openStatistics, openMissingRelease, openPost, openBoost };
 };
 
 // A day view slot is a minute of the user's day, on the day in view
@@ -684,7 +703,7 @@ export const ListView = () => {
       : t('no_posts', 'No posts');
 
   // Use shared post actions hook
-  const { editPost, deletePost, copyDebugJson, openStatistics, openMissingRelease, openPost } = usePostActions();
+  const { editPost, deletePost, copyDebugJson, openStatistics, openMissingRelease, openPost, openBoost } = usePostActions();
 
   // Group posts by date
   const groupedPosts = useMemo(() => {
@@ -732,6 +751,7 @@ export const ListView = () => {
                   date={fromUtc(post.publishDate)}
                   state={post.state}
                   statistics={openStatistics(post.id)}
+                  boost={openBoost(post.id)}
                   missingRelease={openMissingRelease(post.id)}
                   openPost={openPost(post)}
                   editPost={editPost(post, false)}
@@ -791,7 +811,7 @@ export const CalendarColumn: FC<{
   const fetch = useFetch();
 
   // Use shared post actions hook
-  const { editPost, deletePost, copyDebugJson, openStatistics, openMissingRelease, openPost } = usePostActions();
+  const { editPost, deletePost, copyDebugJson, openStatistics, openMissingRelease, openPost, openBoost } = usePostActions();
   const postList = useMemo(() => {
     if (display === 'week') {
       const start = getDate.startOf('hour').valueOf();
@@ -1075,6 +1095,7 @@ export const CalendarColumn: FC<{
                   date={getDate}
                   state={post.state}
                   statistics={openStatistics(post.id)}
+                  boost={openBoost(post.id)}
                   missingRelease={openMissingRelease(post.id)}
                   openPost={openPost(post)}
                   editPost={editPost(post, false)}
@@ -1201,6 +1222,7 @@ const CalendarItem: FC<{
   copyDebugJson?: () => void;
   deletePost: () => void;
   statistics: () => void;
+  boost?: () => void;
   missingRelease?: () => void;
   openPost: () => void;
   integrations: Integrations[];
@@ -1218,6 +1240,7 @@ const CalendarItem: FC<{
   const {
     editPost,
     statistics,
+    boost,
     duplicatePost,
     copyDebugJson,
     post,
@@ -1232,6 +1255,15 @@ const CalendarItem: FC<{
   } = props;
   const { disableXAnalytics } = useVariables();
   const user = useUser();
+  const { data: adsProviders } = useAdsProviders();
+  const canBoost =
+    !!boost &&
+    state === 'PUBLISHED' &&
+    !!post.releaseId &&
+    post.releaseId !== 'missing' &&
+    !!adsProviders?.some((p) =>
+      p.socialProviders.includes(post.integration.providerIdentifier)
+    );
   const showCreationMethodBadge =
     user?.impersonate &&
     post.creationMethod &&
@@ -1364,6 +1396,17 @@ const CalendarItem: FC<{
         ) : (
           <></>
         )}{' '}
+        {canBoost && (
+          <div
+            className={clsx(
+              'hidden group-hover:block hover:underline cursor-pointer',
+              post?.tags?.[0]?.tag?.color && 'text-shadow-tags'
+            )}
+            onClick={boost}
+          >
+            <Boost />
+          </div>
+        )}
         <div
           className={clsx(
             'hidden group-hover:block hover:underline cursor-pointer',
@@ -1580,6 +1623,29 @@ export const Statistics = () => {
       <path
         d="M28 25H27V5C27 4.73478 26.8946 4.48043 26.7071 4.29289C26.5196 4.10536 26.2652 4 26 4H19C18.7348 4 18.4804 4.10536 18.2929 4.29289C18.1054 4.48043 18 4.73478 18 5V10H12C11.7348 10 11.4804 10.1054 11.2929 10.2929C11.1054 10.4804 11 10.7348 11 11V16H6C5.73478 16 5.48043 16.1054 5.29289 16.2929C5.10536 16.4804 5 16.7348 5 17V25H4C3.73478 25 3.48043 25.1054 3.29289 25.2929C3.10536 25.4804 3 25.7348 3 26C3 26.2652 3.10536 26.5196 3.29289 26.7071C3.48043 26.8946 3.73478 27 4 27H28C28.2652 27 28.5196 26.8946 28.7071 26.7071C28.8946 26.5196 29 26.2652 29 26C29 25.7348 28.8946 25.4804 28.7071 25.2929C28.5196 25.1054 28.2652 25 28 25ZM20 6H25V25H20V6ZM13 12H18V25H13V12ZM7 18H11V25H7V18Z"
         fill="currentColor"
+      />
+    </svg>
+  );
+};
+
+export const Boost = () => {
+  const t = useT();
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      data-tooltip-id="tooltip"
+      data-tooltip-content={t('promote_post', 'Promote post')}
+    >
+      <path
+        d="M18 8V16M18 8C19.6569 8 21 9.79086 21 12C21 14.2091 19.6569 16 18 16M18 8L10 5V19L18 16M10 5H6C4.34315 5 3 6.34315 3 8V16C3 17.6569 4.34315 19 6 19H7L8 22H10V19"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   );
