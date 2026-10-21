@@ -108,7 +108,9 @@ export const SettingsPopup: FC<{
       arr.push({ tab: 'signatures', label: t('signatures', 'Signatures') });
     }
     arr.push({ tab: 'integrations', label: t('integrations', 'Integrations') });
-    arr.push({ tab: 'ads', label: t('ads_accounts', 'Ad Accounts') });
+    if (user?.role !== 'USER') {
+      arr.push({ tab: 'ads', label: t('ads_accounts', 'Ad Accounts') });
+    }
     arr.push({ tab: 'plugs', label: t('plugs', 'Plugs') });
     arr.push({ tab: 'apps', label: t('apps', 'Apps') });
 

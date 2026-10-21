@@ -35,7 +35,10 @@ export const ContinueAds: FC<{
 
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        setError(body.message || 'Could not connect the ads account');
+        setError(
+          (Array.isArray(body.message) ? body.message[0] : body.message) ||
+            t('ads_connect_failed', 'Could not connect the ads account')
+        );
         return;
       }
 

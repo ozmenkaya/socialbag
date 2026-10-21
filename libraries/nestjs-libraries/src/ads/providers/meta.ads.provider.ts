@@ -108,7 +108,7 @@ export class MetaAdsProvider implements AdsProvider {
         `?client_id=${process.env.FACEBOOK_APP_ID}` +
         `&redirect_uri=${encodeURIComponent(this.redirectUri())}` +
         `&client_secret=${process.env.FACEBOOK_APP_SECRET}` +
-        `&code=${code}`
+        `&code=${encodeURIComponent(code)}`
     );
 
     const { access_token, expires_in } = await this.request(
@@ -189,9 +189,12 @@ export class MetaAdsProvider implements AdsProvider {
       });
     }
 
+    // Feed posts are stored as pageId_postId, videos and reels only as the video id
     return this.post(`${params.adAccountId}/adcreatives`, token, {
       name: params.name,
-      object_story_id: target.releaseId,
+      object_story_id: target.releaseId.includes('_')
+        ? target.releaseId
+        : `${target.internalId}_${target.releaseId}`,
     });
   }
 
@@ -264,15 +267,29 @@ export class MetaAdsProvider implements AdsProvider {
   }
 
   async changeStatus(token: string, ids: BoostIds, status: BoostStatus) {
-    for (const id of [ids.campaignId, ids.adSetId, ids.adId]) {
+    // Pausing the campaign stops all spend. When starting, the campaign goes
+    // last so a failure in between never leaves anything delivering.
+    const order =
+      status === 'PAUSED'
+        ? [ids.campaignId]
+        : [ids.adId, ids.adSetId, ids.campaignId];
+    for (const id of order) {
       await this.post(id, token, { status });
     }
   }
 
   async remove(token: string, ids: BoostIds) {
-    await this.request(`${GRAPH}/${ids.campaignId}?access_token=${token}`, {
-      method: 'DELETE',
-    });
+    const response = await fetch(
+      `${GRAPH}/${ids.campaignId}?access_token=${token}`,
+      { method: 'DELETE' }
+    );
+    const json = await response.json().catch(() => ({}));
+    // code 100: the campaign was already deleted in Ads Manager
+    if (json?.error && json.error.code !== 100) {
+      throw new BadRequestException(
+        json.error.error_user_msg || json.error.message || 'Meta request failed'
+      );
+    }
   }
 
   async insights(token: string, ids: BoostIds): Promise<BoostInsights> {

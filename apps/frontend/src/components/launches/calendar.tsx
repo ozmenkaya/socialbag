@@ -1258,6 +1258,7 @@ const CalendarItem: FC<{
   const { data: adsProviders } = useAdsProviders();
   const canBoost =
     !!boost &&
+    user?.role !== 'USER' &&
     state === 'PUBLISHED' &&
     !!post.releaseId &&
     post.releaseId !== 'missing' &&

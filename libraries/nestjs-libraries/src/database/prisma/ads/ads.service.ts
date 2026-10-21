@@ -139,9 +139,12 @@ export class AdsService {
     return Promise.all(
       boosts.map(async (boost) => {
         const provider = this.getProvider(boost.connection.provider);
-        const insights = await provider
-          .insights(boost.connection.token, boost)
-          .catch(() => undefined);
+        const connected = !boost.connection.deletedAt;
+        const insights = connected
+          ? await provider
+              .insights(boost.connection.token, boost)
+              .catch(() => undefined)
+          : undefined;
 
         return {
           id: boost.id,
@@ -152,6 +155,7 @@ export class AdsService {
           endDate: boost.endDate,
           status: boost.status,
           connectionName: boost.connection.name,
+          connected,
           manageUrl: provider.manageUrl(boost.adAccountId, boost),
           insights,
         };
@@ -159,11 +163,19 @@ export class AdsService {
     );
   }
 
-  async changeBoostStatus(orgId: string, id: string, body: BoostStatusDto) {
+  private async getManageableBoost(orgId: string, id: string) {
     const boost = await this._adsRepository.getBoost(orgId, id);
     if (!boost) {
-      throw new BadRequestException('Boost not found');
+      throw new BadRequestException(
+        'Ad not found, or its ads account was disconnected. Reconnect the ads account to manage it.'
+      );
     }
+
+    return boost;
+  }
+
+  async changeBoostStatus(orgId: string, id: string, body: BoostStatusDto) {
+    const boost = await this.getManageableBoost(orgId, id);
 
     await this.getProvider(boost.connection.provider).changeStatus(
       boost.connection.token,
@@ -175,10 +187,7 @@ export class AdsService {
   }
 
   async deleteBoost(orgId: string, id: string) {
-    const boost = await this._adsRepository.getBoost(orgId, id);
-    if (!boost) {
-      throw new BadRequestException('Boost not found');
-    }
+    const boost = await this.getManageableBoost(orgId, id);
 
     await this.getProvider(boost.connection.provider).remove(
       boost.connection.token,

@@ -32,6 +32,7 @@ interface BoostItem {
   endDate: string;
   status: 'ACTIVE' | 'PAUSED';
   connectionName: string;
+  connected: boolean;
   manageUrl: string;
   insights?: {
     spend: number;
@@ -97,9 +98,9 @@ export const BoostModal: FC<{ postId: string }> = ({ postId }) => {
       connectionId: '',
       adAccountId: '',
       objective: 'engagement',
-      dailyBudget: 100,
+      dailyBudget: undefined,
       days: 7,
-      countries: 'TR',
+      countries: '',
       ageMin: 18,
       ageMax: 65,
       specialAdCategory: 'NONE',
@@ -180,7 +181,7 @@ export const BoostModal: FC<{ postId: string }> = ({ postId }) => {
           !(await deleteDialog(
             t(
               'start_boost_confirm',
-              `This ad will start spending up to ${boost.dailyBudget} ${boost.currency} per day, around ${boost.dailyBudget * days} ${boost.currency} in total.`,
+              'This ad will start spending up to {{daily}} {{currency}} per day, around {{total}} {{currency}} in total.',
               {
                 daily: boost.dailyBudget,
                 total: boost.dailyBudget * days,
@@ -301,6 +302,14 @@ export const BoostModal: FC<{ postId: string }> = ({ postId }) => {
                   {t('clicks', 'Clicks')}: {boost.insights.clicks}
                 </div>
               )}
+              {!boost.connected ? (
+                <div className="text-textItemBlur text-[13px]">
+                  {t(
+                    'boost_disconnected',
+                    'The ads account of this ad was disconnected. Reconnect it to manage the ad here, or use Ads Manager.'
+                  )}
+                </div>
+              ) : (
               <div className="flex gap-[8px]">
                 {boost.status === 'ACTIVE' ? (
                   <Button onClick={changeStatus(boost, 'PAUSED')}>
@@ -315,6 +324,7 @@ export const BoostModal: FC<{ postId: string }> = ({ postId }) => {
                   {t('delete', 'Delete')}
                 </Button>
               </div>
+              )}
             </div>
           ))}
         </div>

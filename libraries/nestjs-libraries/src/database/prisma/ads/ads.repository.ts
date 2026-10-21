@@ -75,6 +75,7 @@ export class AdsRepository {
         organizationId: orgId,
       },
       data: {
+        token: '',
         deletedAt: new Date(),
       },
       select: {
@@ -154,6 +155,9 @@ export class AdsRepository {
         id,
         organizationId: orgId,
         deletedAt: null,
+        connection: {
+          deletedAt: null,
+        },
       },
       include: {
         connection: true,

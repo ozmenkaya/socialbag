@@ -17,10 +17,4 @@ export class AdsManager {
   getProvider(identifier: string) {
     return adsProviderList.find((p) => p.identifier === identifier);
   }
-
-  getProviderForSocial(socialIdentifier: string) {
-    return adsProviderList.find((p) =>
-      p.socialProviders.includes(socialIdentifier)
-    );
-  }
 }

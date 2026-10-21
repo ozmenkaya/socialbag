@@ -53,10 +53,18 @@ export const AdsConnectionsComponent: FC = () => {
 
   const connect = useCallback(
     (identifier: string) => async () => {
-      const { url } = await (await fetch(`/ads/${identifier}/url`)).json();
+      const response = await fetch(`/ads/${identifier}/url`);
+      const { url } = await response.json().catch(() => ({}));
+      if (!response.ok || !url) {
+        toaster.show(
+          t('ads_connect_start_failed', 'Could not start the connection'),
+          'warning'
+        );
+        return;
+      }
       window.location.href = url;
     },
-    [fetch]
+    [fetch, t, toaster]
   );
 
   const disconnect = useCallback(
@@ -65,7 +73,7 @@ export const AdsConnectionsComponent: FC = () => {
         !(await deleteDialog(
           t(
             'are_you_sure_you_want_to_disconnect_ads',
-            `Are you sure you want to disconnect ${connection.name}? Existing ads keep running in the ads manager.`,
+            'Are you sure you want to disconnect {{name}}? Existing ads keep running in the ads manager.',
             { name: connection.name }
           )
         ))
@@ -73,7 +81,16 @@ export const AdsConnectionsComponent: FC = () => {
         return;
       }
 
-      await fetch(`/ads/connections/${connection.id}`, { method: 'DELETE' });
+      const response = await fetch(`/ads/connections/${connection.id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        toaster.show(
+          t('ads_disconnect_failed', 'Could not disconnect the ads account'),
+          'warning'
+        );
+        return;
+      }
       mutate();
       toaster.show(t('ads_account_disconnected', 'Ads account disconnected'), 'success');
     },
@@ -131,7 +148,7 @@ export const AdsConnectionsComponent: FC = () => {
           <div className="flex gap-[8px]">
             {providers?.map((p) => (
               <Button key={p.identifier} onClick={connect(p.identifier)}>
-                {t('connect_ads_provider', `Connect ${p.name} ads`, {
+                {t('connect_ads_provider', 'Connect {{name}} ads', {
                   name: p.name,
                 })}
               </Button>
