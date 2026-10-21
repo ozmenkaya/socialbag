@@ -984,6 +984,19 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
     ];
   }
 
+  async deletePost(
+    accessToken: string,
+    postId: string,
+    integration: Integration
+  ): Promise<void> {
+    await this.fetch(
+      `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${postId}?access_token=${accessToken}`,
+      {
+        method: 'DELETE',
+      }
+    );
+  }
+
   async comment(
     id: string,
     postId: string,

@@ -231,6 +231,19 @@ export class InstagramStandaloneProvider
     return instagramProvider.finalizePost(accessToken, pendingData, integration);
   }
 
+  async deletePost(
+    accessToken: string,
+    postId: string,
+    integration: Integration
+  ): Promise<void> {
+    return instagramProvider.deletePost(
+      accessToken,
+      postId,
+      integration,
+      'graph.instagram.com'
+    );
+  }
+
   async comment(
     id: string,
     postId: string,

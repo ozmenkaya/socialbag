@@ -1092,6 +1092,22 @@ export class InstagramProvider
     }
   }
 
+  async deletePost(
+    token: string,
+    postId: string,
+    integration: Integration,
+    type = 'graph.facebook.com'
+  ): Promise<void> {
+    const [accessToken] = token.split('___');
+
+    await this.fetch(
+      `https://${type}/${META_GRAPH_API_VERSION}/${postId}?access_token=${accessToken}`,
+      {
+        method: 'DELETE',
+      }
+    );
+  }
+
   async comment(
     id: string,
     postId: string,

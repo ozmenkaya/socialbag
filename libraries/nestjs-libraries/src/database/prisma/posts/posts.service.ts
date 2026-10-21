@@ -882,7 +882,64 @@ export class PostsService {
       });
   }
 
-  async deletePost(orgId: string, group: string) {
+  private async deleteFromPlatform(orgId: string, group: string) {
+    const posts = await this._postRepository.getPostsByGroup(orgId, group);
+
+    for (const post of posts) {
+      if (
+        post.parentPostId ||
+        !post.releaseId ||
+        post.releaseId === 'missing' ||
+        !post.integration
+      ) {
+        continue;
+      }
+
+      const provider = this._integrationManager.getSocialIntegration(
+        post.integration.providerIdentifier
+      );
+
+      if (!provider.deletePost) {
+        continue;
+      }
+
+      try {
+        const integration = post.integration;
+        if (dayjs(integration.tokenExpiration).isBefore(dayjs())) {
+          const data = await this._refreshIntegrationService.refresh(
+            integration
+          );
+          if (!data) {
+            continue;
+          }
+
+          const { accessToken } = data;
+          if (!accessToken) {
+            continue;
+          }
+
+          integration.token = accessToken;
+        }
+
+        await provider.deletePost(
+          integration.token,
+          post.releaseId,
+          integration
+        );
+      } catch (err) {
+        console.log(
+          `Failed to delete post ${post.id} from ${post.integration.providerIdentifier}`,
+          err
+        );
+      }
+    }
+  }
+
+  async deletePost(orgId: string, group: string, fromPlatform = false) {
+    if (fromPlatform) {
+      await this.deleteFromPlatform(orgId, group);
+    }
+
     const post = await this._postRepository.deletePost(orgId, group);
 
     if (post?.id) {
