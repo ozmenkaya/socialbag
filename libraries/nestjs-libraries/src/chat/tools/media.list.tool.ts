@@ -13,8 +13,8 @@ export class MediaListTool implements AgentToolInterface {
   run() {
     return createTool({
       id: 'mediaListTool',
-      description: `List the media (images and videos) already uploaded to the media library, newest first, 18 per page, optionally searched by original filename.
-Use the returned path as an attachment URL in integrationSchedulePostTool instead of uploading the file again.`,
+      description: `List the media (images and videos) already uploaded to the media library, newest first, 18 per page, optionally searched by original filename and limited to one folder.
+Use the returned path as an attachment URL in integrationSchedulePostTool instead of uploading the file again. Use mediaViewTool to look at a media.`,
       inputSchema: z.object({
         search: z
           .string()
@@ -26,6 +26,12 @@ Use the returned path as an attachment URL in integrationSchedulePostTool instea
           .min(1)
           .optional()
           .describe('Page number, starting at 1'),
+        folder: z
+          .string()
+          .optional()
+          .describe(
+            "Folder id from mediaFoldersListTool to list only its media, 'root' for media outside folders, omit for all media"
+          ),
       }),
       mcp: {
         annotations: {
@@ -44,6 +50,7 @@ Use the returned path as an attachment URL in integrationSchedulePostTool instea
             name: z.string(),
             originalName: z.string().nullable(),
             path: z.string(),
+            folderId: z.string().nullable(),
             createdAt: z.string(),
           })
         ),
@@ -57,7 +64,8 @@ Use the returned path as an attachment URL in integrationSchedulePostTool instea
         const { pages, results } = await this._mediaService.getMedia(
           organizationId,
           inputData.page || 1,
-          inputData.search
+          inputData.search,
+          inputData.folder
         );
 
         return {
@@ -67,6 +75,7 @@ Use the returned path as an attachment URL in integrationSchedulePostTool instea
             name: p.name,
             originalName: p.originalName,
             path: p.path,
+            folderId: p.folderId,
             createdAt: p.createdAt.toISOString(),
           })),
         };

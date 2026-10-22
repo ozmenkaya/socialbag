@@ -5,6 +5,8 @@ import { generationError } from '@gitroom/nestjs-libraries/openai/generation.err
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { Organization } from '@prisma/client';
 import { SaveMediaInformationDto } from '@gitroom/nestjs-libraries/dtos/media/save.media.information.dto';
+import sharp from 'sharp';
+import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import {
   CreateMediaFolderDto,
   MediaFolderIntegrationsDto,
@@ -499,6 +501,77 @@ export class MediaService {
 
   getMedia(org: string, page: number, search?: string, folder?: string) {
     return this._mediaRepository.getMedia(org, page, search, folder);
+  }
+
+  // videos are read through their thumbnail, there is no frame to look at otherwise
+  private async loadPicture(
+    media: { path: string; thumbnail?: string | null },
+    maxSize: number
+  ) {
+    const url = hasExtension(media.path, 'mp4') ? media.thumbnail : media.path;
+    if (!url) {
+      return undefined;
+    }
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new BadRequestException('Could not read the media file');
+    }
+
+    return sharp(Buffer.from(await response.arrayBuffer()))
+      .rotate()
+      .resize(maxSize, maxSize, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 82 })
+      .toBuffer();
+  }
+
+  async getMediaPreview(org: string, id: string) {
+    const [media] = await this._mediaRepository.getMediaByIds(org, [id]);
+    if (!media) {
+      throw new BadRequestException('Media not found');
+    }
+
+    const picture = await this.loadPicture(media, 1568);
+    if (!picture) {
+      throw new BadRequestException('This video has no thumbnail to show');
+    }
+
+    return {
+      id: media.id,
+      originalName: media.originalName,
+      path: media.path,
+      folderId: media.folderId,
+      isVideo: hasExtension(media.path, 'mp4'),
+      data: picture.toString('base64'),
+    };
+  }
+
+  async generateDesign(
+    org: Organization,
+    prompt: string,
+    size: '1024x1024' | '1024x1536' | '1536x1024',
+    referenceIds: string[]
+  ) {
+    const found = await this._mediaRepository.getMediaByIds(org.id, referenceIds);
+    if (found.length !== new Set(referenceIds).size) {
+      throw new BadRequestException('Reference media not found');
+    }
+
+    const references: { data: Buffer; name: string; type: string }[] = [];
+    for (const media of found) {
+      const data = await this.loadPicture(media, 2048);
+      if (data) {
+        references.push({ data, name: `${media.id}.jpg`, type: 'image/jpeg' });
+      }
+    }
+
+    try {
+      return await this._subscriptionService.useCredit(org, 'ai_images', () =>
+        this._openAi.generateDesign(prompt, size, references)
+      );
+    } catch (err) {
+      throw generationError(err);
+    }
   }
 
   async getFolders(org: string) {

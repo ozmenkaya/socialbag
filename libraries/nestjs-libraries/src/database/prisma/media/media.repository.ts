@@ -175,6 +175,7 @@ export class MediaRepository {
         alt: true,
         thumbnailTimestamp: true,
         createdAt: true,
+        folderId: true,
       },
       skip: pageNum * 18,
       take: 18,
@@ -368,6 +369,24 @@ export class MediaRepository {
             },
           },
         },
+      },
+    });
+  }
+
+  getMediaByIds(org: string, ids: string[]) {
+    return this._media.model.media.findMany({
+      where: {
+        id: { in: ids },
+        organizationId: org,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        name: true,
+        originalName: true,
+        path: true,
+        thumbnail: true,
+        folderId: true,
       },
     });
   }

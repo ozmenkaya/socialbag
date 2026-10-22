@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import OpenAI from 'openai';
+import OpenAI, { toFile } from 'openai';
 import { shuffle } from 'lodash';
 import { zodResponseFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
@@ -87,6 +87,34 @@ Clips must not overlap. Write the title and the post in this language, whatever 
     ).data[0];
 
     return generate.b64_json;
+  }
+
+  // reference pictures (e.g. photos from a media folder) guide the design
+  async generateDesign(
+    prompt: string,
+    size: '1024x1024' | '1024x1536' | '1536x1024',
+    references: { data: Buffer; name: string; type: string }[]
+  ) {
+    if (!references.length) {
+      return (
+        await openai.images.generate({
+          prompt,
+          model: 'chatgpt-image-latest',
+          size,
+        })
+      ).data?.[0]?.b64_json;
+    }
+
+    return (
+      await openai.images.edit({
+        prompt,
+        model: process.env.OPENAI_IMAGE_EDIT_MODEL || 'gpt-image-1',
+        size,
+        image: await Promise.all(
+          references.map((p) => toFile(p.data, p.name, { type: p.type }))
+        ),
+      })
+    ).data?.[0]?.b64_json;
   }
 
   async generatePromptForPicture(prompt: string) {

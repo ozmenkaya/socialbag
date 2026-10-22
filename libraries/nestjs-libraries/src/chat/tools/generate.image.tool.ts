@@ -6,6 +6,13 @@ import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/me
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
+import { MediaAutoPostService } from '@gitroom/nestjs-libraries/database/prisma/media/media.autopost.service';
+
+const SIZES = {
+  square: '1024x1024',
+  portrait: '1024x1536',
+  landscape: '1536x1024',
+} as const;
 
 @Injectable()
 export class GenerateImageTool implements AgentToolInterface {
@@ -13,7 +20,8 @@ export class GenerateImageTool implements AgentToolInterface {
 
   constructor(
     private _mediaService: MediaService,
-    private _subscriptionService: SubscriptionService
+    private _subscriptionService: SubscriptionService,
+    private _mediaAutoPostService: MediaAutoPostService
   ) {}
   name = 'generateImageTool';
 
@@ -23,6 +31,8 @@ export class GenerateImageTool implements AgentToolInterface {
       description: `Generate image to use in a post,
                     in case the user specified a platform that requires attachment and attachment was not provided,
                     ask if they want to generate a picture of a video.
+                    To design from the user's own photos, pass their media ids as referenceMediaIds (look at them with mediaViewTool first)
+                    and folderId to save the result in a folder of the media library.
       `,
       mcp: {
         annotations: {
@@ -35,6 +45,19 @@ export class GenerateImageTool implements AgentToolInterface {
       },
       inputSchema: z.object({
         prompt: z.string(),
+        referenceMediaIds: z
+          .array(z.string())
+          .max(10)
+          .optional()
+          .describe('Media ids (mediaListTool) the design is based on'),
+        size: z
+          .enum(['square', 'portrait', 'landscape'])
+          .optional()
+          .describe('square 1:1, portrait 2:3 (stories, reels), landscape 3:2'),
+        folderId: z
+          .string()
+          .optional()
+          .describe('Folder id (mediaFoldersListTool) to save the result in'),
       }),
       // Mastra validates the return against this schema, so it must also
       // allow the graceful { error } shape (same as uploadFromUrlTool)
@@ -56,20 +79,36 @@ export class GenerateImageTool implements AgentToolInterface {
             };
           }
 
-          const image = await this._mediaService.generateImage(
-            inputData.prompt,
-            org
-          );
+          const image =
+            inputData.referenceMediaIds?.length || inputData.size
+              ? await this._mediaService.generateDesign(
+                  org,
+                  inputData.prompt,
+                  SIZES[(inputData.size || 'square') as keyof typeof SIZES],
+                  inputData.referenceMediaIds || []
+                )
+              : await this._mediaService.generateImage(inputData.prompt, org);
+          if (!image) {
+            return { error: 'The image provider returned no image.' };
+          }
 
           const file = await this.storage.uploadSimple(
             'data:image/png;base64,' + image
           );
 
-          return await this._mediaService.saveFile(
+          const saved = await this._mediaService.saveFile(
             org.id,
             file.split('/').pop(),
             file
           );
+          if (inputData.folderId) {
+            await this._mediaAutoPostService.moveMedia(org.id, {
+              media: [saved.id],
+              folderId: inputData.folderId,
+            });
+          }
+
+          return saved;
         } catch (err) {
           return {
             error: `Image generation failed: ${
