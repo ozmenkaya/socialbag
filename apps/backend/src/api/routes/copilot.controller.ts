@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import {
   CopilotRuntime,
+  EmptyAdapter,
   OpenAIAdapter,
   copilotRuntimeNodeHttpEndpoint,
 } from '@copilotkit/runtime';
@@ -18,6 +19,7 @@ import { Organization } from '@prisma/client';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { MastraAgent } from '@ag-ui/mastra';
 import { MastraService } from '@gitroom/nestjs-libraries/chat/mastra.service';
+import { LoadToolsService } from '@gitroom/nestjs-libraries/chat/load.tools.service';
 import { Request, Response } from 'express';
 import { RequestContext } from '@mastra/core/di';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
@@ -43,7 +45,8 @@ const copilotCors = () => ({
 export class CopilotController {
   constructor(
     private _subscriptionService: SubscriptionService,
-    private _mastraService: MastraService
+    private _mastraService: MastraService,
+    private _loadToolsService: LoadToolsService
   ) {}
   @Post('/chat')
   chatAgent(@Req() req: Request, @Res() res: Response) {
@@ -74,11 +77,11 @@ export class CopilotController {
     @Res() res: Response,
     @GetOrgFromRequest() organization: Organization
   ) {
-    if (
-      process.env.OPENAI_API_KEY === undefined ||
-      process.env.OPENAI_API_KEY === ''
-    ) {
-      Logger.warn('OpenAI API key not set, chat functionality will not work');
+    if (!(await this._loadToolsService.agentModel(organization.id))) {
+      Logger.warn('No OpenAI or Claude key, the agent will not work');
+      res.status(400).json({
+        message: 'Connect OpenAI or Claude in Settings > Integrations',
+      });
       return;
     }
     const mastra = await this._mastraService.mastra();
@@ -105,9 +108,8 @@ export class CopilotController {
       endpoint: '/copilot/agent',
       cors: copilotCors(),
       runtime,
-      serviceAdapter: new OpenAIAdapter({
-        model: 'gpt-4.1',
-      }),
+      // the agents bring their own model
+      serviceAdapter: new EmptyAdapter(),
     });
 
     return copilotRuntimeHandler(req, res);

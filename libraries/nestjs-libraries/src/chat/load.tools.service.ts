@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Agent } from '@mastra/core/agent';
-import { openai } from '@ai-sdk/openai';
+import type { MastraModelConfig } from '@mastra/core/llm';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createAnthropic } from '@ai-sdk/anthropic';
 import { Memory } from '@mastra/memory';
 import { pStore } from '@gitroom/nestjs-libraries/chat/mastra.store';
 import { array, object, string } from 'zod';
@@ -8,6 +10,7 @@ import { ModuleRef } from '@nestjs/core';
 import { toolList } from '@gitroom/nestjs-libraries/chat/tools/tool.list';
 import { AgentToolInterface } from '@gitroom/nestjs-libraries/chat/agent.tool.interface';
 import dayjs from 'dayjs';
+import { ThirdPartyService } from '@gitroom/nestjs-libraries/database/prisma/third-party/third-party.service';
 
 export const AgentState = object({
   proverbs: array(string()).default([]),
@@ -20,7 +23,24 @@ const renderArray = (list: string[], show: boolean) => {
 
 @Injectable()
 export class LoadToolsService {
-  constructor(private _moduleRef: ModuleRef) {}
+  constructor(
+    private _moduleRef: ModuleRef,
+    private _thirdPartyService: ThirdPartyService
+  ) {}
+
+  // the keys connected in Settings > Integrations, Claude first, then
+  // OPENAI_API_KEY as the server wide fallback
+  async agentModel(org?: string): Promise<MastraModelConfig | undefined> {
+    const claude = org && (await this._thirdPartyService.getApiKey(org, 'anthropic'));
+    if (claude) {
+      return createAnthropic({ apiKey: claude })('claude-opus-5-5');
+    }
+
+    const openai =
+      (org && (await this._thirdPartyService.getApiKey(org, 'openai'))) ||
+      process.env.OPENAI_API_KEY;
+    return openai ? createOpenAI({ apiKey: openai })('gpt-5.2') : undefined;
+  }
 
   async loadTools(mcpOnly = false) {
     return (
@@ -113,7 +133,16 @@ export class LoadToolsService {
       )}
 `;
       },
-      model: openai('gpt-5.2'),
+      model: async ({ requestContext }) => {
+        const organization = requestContext.get('organization' as never) as string | undefined;
+        const model = await this.agentModel(
+          organization ? JSON.parse(organization).id : undefined
+        );
+        if (!model) {
+          throw new Error('Connect OpenAI or Claude in Settings > Integrations');
+        }
+        return model;
+      },
       tools,
       memory: new Memory({
         storage: pStore,
