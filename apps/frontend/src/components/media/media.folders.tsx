@@ -21,6 +21,13 @@ export interface MediaFolderItem {
     picture?: string;
     providerIdentifier: string;
   }[];
+  autoPost: {
+    enabled: boolean;
+    days: number[];
+    time: string;
+    timezone: string;
+    content: string;
+  };
 }
 
 // 'all' lists every media, 'root' only media outside folders
@@ -212,6 +219,148 @@ const FolderChannelsModal: FC<{
   );
 };
 
+const FolderAutoPostModal: FC<{
+  folder: MediaFolderItem;
+  onSaved: () => void;
+}> = ({ folder, onSaved }) => {
+  const t = useT();
+  const fetch = useFetch();
+  const modals = useModals();
+  const toaster = useToaster();
+  const browserTimezone = useMemo(
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+    []
+  );
+  const [enabled, setEnabled] = useState(folder.autoPost.enabled);
+  const [days, setDays] = useState<number[]>(folder.autoPost.days);
+  const [time, setTime] = useState(folder.autoPost.time);
+  const [content, setContent] = useState(folder.autoPost.content);
+  const [saving, setSaving] = useState(false);
+  // a folder that was never set up follows the browser's timezone
+  const timezone =
+    folder.autoPost.enabled || folder.autoPost.timezone !== 'UTC'
+      ? folder.autoPost.timezone
+      : browserTimezone;
+
+  const weekDays = useMemo(
+    () => [
+      { day: 1, label: t('monday_short', 'Mon') },
+      { day: 2, label: t('tuesday_short', 'Tue') },
+      { day: 3, label: t('wednesday_short', 'Wed') },
+      { day: 4, label: t('thursday_short', 'Thu') },
+      { day: 5, label: t('friday_short', 'Fri') },
+      { day: 6, label: t('saturday_short', 'Sat') },
+      { day: 0, label: t('sunday_short', 'Sun') },
+    ],
+    [t]
+  );
+
+  const toggleDay = useCallback(
+    (day: number) => () => {
+      setDays((prev) =>
+        prev.includes(day) ? prev.filter((p) => p !== day) : [...prev, day]
+      );
+    },
+    []
+  );
+
+  const save = useCallback(async () => {
+    setSaving(true);
+    const response = await fetch(`/media-folders/${folder.id}/auto-post`, {
+      method: 'PUT',
+      body: JSON.stringify({ enabled, days, time, timezone, content }),
+    });
+    setSaving(false);
+    if (!response.ok) {
+      toaster.show(
+        await errorMessage(response, t('folder_auto_post_failed', 'Could not save the schedule')),
+        'warning'
+      );
+      return;
+    }
+    onSaved();
+    modals.closeCurrent();
+  }, [fetch, folder.id, enabled, days, time, timezone, content, onSaved, modals, toaster, t]);
+
+  return (
+    <div className="flex flex-col gap-[16px]">
+      <div className="text-textItemBlur text-[14px]">
+        {t(
+          'folder_auto_post_description',
+          'Media added to this folder is added as a draft on its channels, one per slot of this schedule. Drafts are not published until you schedule them.'
+        )}
+      </div>
+      {!folder.integrations.length && (
+        <div className="text-[14px] text-red-400">
+          {t(
+            'folder_auto_post_no_channels',
+            'This folder has no channels yet, link channels first.'
+          )}
+        </div>
+      )}
+      <label className="flex items-center gap-[10px] cursor-pointer">
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => setEnabled(e.target.checked)}
+        />
+        {t('folder_auto_post_enabled', 'Draft new media automatically')}
+      </label>
+      <div className="flex flex-col gap-[8px]">
+        <div className="text-[14px]">{t('days', 'Days')}</div>
+        <div className="flex gap-[6px] flex-wrap">
+          {weekDays.map((p) => (
+            <div
+              key={p.day}
+              onClick={toggleDay(p.day)}
+              className={clsx(
+                'cursor-pointer px-[12px] h-[34px] flex items-center rounded-[8px] border text-[14px]',
+                days.includes(p.day)
+                  ? 'bg-[#612BD3] border-[#612BD3] text-white'
+                  : 'border-newColColor'
+              )}
+            >
+              {p.label}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-col gap-[8px]">
+        <div className="text-[14px]">
+          {t('time', 'Time')}{' '}
+          <span className="text-textItemBlur text-[12px]">({timezone})</span>
+        </div>
+        <input
+          type="time"
+          value={time}
+          onChange={(e) => setTime(e.target.value)}
+          className="w-[140px] h-[44px] px-[14px] rounded-[8px] bg-newBgColorInner border border-newColColor text-[14px] outline-none"
+        />
+      </div>
+      <div className="flex flex-col gap-[8px]">
+        <div className="text-[14px]">
+          {t('folder_auto_post_content', 'Post text')}{' '}
+          <span className="text-textItemBlur text-[12px]">
+            {t('folder_auto_post_name_hint', '{name} is replaced with the file name')}
+          </span>
+        </div>
+        <textarea
+          value={content}
+          maxLength={5000}
+          rows={5}
+          onChange={(e) => setContent(e.target.value)}
+          className="w-full p-[14px] rounded-[8px] bg-newBgColorInner border border-newColColor text-[14px] outline-none focus:border-[#612BD3]"
+        />
+      </div>
+      <div className="flex justify-end">
+        <Button onClick={save} loading={saving} disabled={enabled && !days.length}>
+          {t('save', 'Save')}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 export const MoveToFolderModal: FC<{
   mediaIds: string[];
   current?: string | null;
@@ -285,7 +434,7 @@ const FolderRow: FC<{
   expanded: string[];
   onSelect: (id: FolderSelection) => void;
   onToggle: (id: string) => void;
-  onAction: (action: 'add' | 'rename' | 'channels' | 'delete', folder: MediaFolderItem) => void;
+  onAction: (action: 'add' | 'rename' | 'channels' | 'autopost' | 'delete', folder: MediaFolderItem) => void;
 }> = (props) => {
   const { folder, folders, depth, selected, expanded, onSelect, onToggle, onAction } = props;
   const t = useT();
@@ -330,6 +479,15 @@ const FolderRow: FC<{
             ))}
           </div>
         )}
+        {folder.autoPost.enabled && (
+          <div
+            className="text-[12px] text-[#612BD3] group-hover/folder:hidden"
+            data-tooltip-id="tooltip"
+            data-tooltip-content={t('folder_auto_post_on', 'Auto post is on')}
+          >
+            ⏱
+          </div>
+        )}
         <div className="text-[12px] text-textItemBlur group-hover/folder:hidden">
           {folder.count}
         </div>
@@ -355,6 +513,17 @@ const FolderRow: FC<{
             }}
           >
             ⛓
+          </span>
+          <span
+            className={clsx('hover:text-newTextColor', folder.autoPost.enabled && 'text-[#612BD3]')}
+            data-tooltip-id="tooltip"
+            data-tooltip-content={t('folder_auto_post', 'Auto post')}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAction('autopost', folder);
+            }}
+          >
+            ⏱
           </span>
           <span
             className="hover:text-newTextColor"
@@ -457,7 +626,7 @@ export const MediaFoldersSidebar: FC<{
   );
 
   const onAction = useCallback(
-    async (action: 'add' | 'rename' | 'channels' | 'delete', folder: MediaFolderItem) => {
+    async (action: 'add' | 'rename' | 'channels' | 'autopost' | 'delete', folder: MediaFolderItem) => {
       if (action === 'add') {
         createFolder(folder);
         return;
@@ -487,6 +656,15 @@ export const MediaFoldersSidebar: FC<{
               }}
             />
           ),
+        });
+        return;
+      }
+
+      if (action === 'autopost') {
+        modals.openModal({
+          title: t('folder_auto_post_title', 'Auto post from {{name}}', { name: folder.name }),
+          withCloseButton: true,
+          children: <FolderAutoPostModal folder={folder} onSaved={() => mutate()} />,
         });
         return;
       }

@@ -963,5 +963,21 @@
   "folder_delete_failed": "Klasör silinemedi",
   "all_media": "Tüm medya",
   "move_to_folder": "Klasöre taşı",
-  "folder_is_empty": "Bu klasör boş"
+  "folder_is_empty": "Bu klasör boş",
+  "monday_short": "Pzt",
+  "tuesday_short": "Sal",
+  "wednesday_short": "Çar",
+  "thursday_short": "Per",
+  "friday_short": "Cum",
+  "saturday_short": "Cmt",
+  "sunday_short": "Paz",
+  "folder_auto_post_failed": "Takvim kaydedilemedi",
+  "folder_auto_post_description": "Bu klasöre eklenen her medya, bu takvimdeki bir sonraki boş zamana, bağlı kanallarda taslak olarak eklenir. Taslaklar siz takvime eklemeden yayınlanmaz.",
+  "folder_auto_post_no_channels": "Bu klasöre henüz kanal bağlanmadı, önce kanal bağlayın.",
+  "folder_auto_post_enabled": "Yeni medyayı otomatik taslak yap",
+  "folder_auto_post_content": "Gönderi metni",
+  "folder_auto_post_name_hint": "{name} dosya adıyla değiştirilir",
+  "folder_auto_post": "Otomatik paylaşım",
+  "folder_auto_post_on": "Otomatik paylaşım açık",
+  "folder_auto_post_title": "{{name}} klasöründen otomatik paylaşım"
 }

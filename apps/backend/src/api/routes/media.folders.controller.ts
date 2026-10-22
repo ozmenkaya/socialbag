@@ -3,8 +3,10 @@ import { ApiTags } from '@nestjs/swagger';
 import { Organization } from '@prisma/client';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
+import { MediaAutoPostService } from '@gitroom/nestjs-libraries/database/prisma/media/media.autopost.service';
 import {
   CreateMediaFolderDto,
+  MediaFolderAutoPostDto,
   MediaFolderIntegrationsDto,
   MoveMediaDto,
   UpdateMediaFolderDto,
@@ -13,7 +15,10 @@ import {
 @ApiTags('Media')
 @Controller('/media-folders')
 export class MediaFoldersController {
-  constructor(private _mediaService: MediaService) {}
+  constructor(
+    private _mediaService: MediaService,
+    private _mediaAutoPostService: MediaAutoPostService
+  ) {}
 
   @Get('/')
   getFolders(@GetOrgFromRequest() org: Organization) {
@@ -33,7 +38,7 @@ export class MediaFoldersController {
     @GetOrgFromRequest() org: Organization,
     @Body() body: MoveMediaDto
   ) {
-    return this._mediaService.moveMedia(org.id, body);
+    return this._mediaAutoPostService.moveMedia(org.id, body);
   }
 
   @Put('/:id')
@@ -52,6 +57,15 @@ export class MediaFoldersController {
     @Body() body: MediaFolderIntegrationsDto
   ) {
     return this._mediaService.setFolderIntegrations(org.id, id, body);
+  }
+
+  @Put('/:id/auto-post')
+  updateAutoPost(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string,
+    @Body() body: MediaFolderAutoPostDto
+  ) {
+    return this._mediaAutoPostService.updateAutoPost(org.id, id, body);
   }
 
   @Delete('/:id')

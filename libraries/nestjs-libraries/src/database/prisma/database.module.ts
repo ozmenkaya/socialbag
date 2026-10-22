@@ -53,6 +53,7 @@ import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/adm
 import { AdsRepository } from '@gitroom/nestjs-libraries/database/prisma/ads/ads.repository';
 import { AdsService } from '@gitroom/nestjs-libraries/database/prisma/ads/ads.service';
 import { AdsManager } from '@gitroom/nestjs-libraries/ads/ads.manager';
+import { MediaAutoPostService } from '@gitroom/nestjs-libraries/database/prisma/media/media.autopost.service';
 
 @Global()
 @Module({
@@ -115,6 +116,7 @@ import { AdsManager } from '@gitroom/nestjs-libraries/ads/ads.manager';
     AdsRepository,
     AdsService,
     AdsManager,
+    MediaAutoPostService,
   ],
   get exports() {
     return this.providers;

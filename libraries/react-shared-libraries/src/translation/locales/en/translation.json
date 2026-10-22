@@ -965,5 +965,21 @@
   "folder_delete_failed": "Could not delete the folder",
   "all_media": "All media",
   "move_to_folder": "Move to folder",
-  "folder_is_empty": "This folder is empty"
+  "folder_is_empty": "This folder is empty",
+  "monday_short": "Mon",
+  "tuesday_short": "Tue",
+  "wednesday_short": "Wed",
+  "thursday_short": "Thu",
+  "friday_short": "Fri",
+  "saturday_short": "Sat",
+  "sunday_short": "Sun",
+  "folder_auto_post_failed": "Could not save the schedule",
+  "folder_auto_post_description": "Media added to this folder is added as a draft on its channels, one per slot of this schedule. Drafts are not published until you schedule them.",
+  "folder_auto_post_no_channels": "This folder has no channels yet, link channels first.",
+  "folder_auto_post_enabled": "Draft new media automatically",
+  "folder_auto_post_content": "Post text",
+  "folder_auto_post_name_hint": "{name} is replaced with the file name",
+  "folder_auto_post": "Auto post",
+  "folder_auto_post_on": "Auto post is on",
+  "folder_auto_post_title": "Auto post from {{name}}"
 }

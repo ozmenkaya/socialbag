@@ -12,6 +12,7 @@ export class MediaRepository {
     private _mediaFolder: PrismaRepository<'mediaFolder'>,
     private _mediaFolderIntegration: PrismaRepository<'mediaFolderIntegration'>,
     private _integration: PrismaRepository<'integration'>,
+    private _mediaFolderQueue: PrismaRepository<'mediaFolderQueue'>,
     private _transaction: PrismaTransaction
   ) {}
 
@@ -198,6 +199,11 @@ export class MediaRepository {
         id: true,
         name: true,
         parentId: true,
+        autoPost: true,
+        autoPostDays: true,
+        autoPostTime: true,
+        autoPostTimezone: true,
+        autoPostContent: true,
         integrations: {
           select: {
             integration: {
@@ -307,6 +313,113 @@ export class MediaRepository {
         },
       }),
     ]);
+  }
+
+  updateFolderAutoPost(
+    org: string,
+    id: string,
+    data: {
+      autoPost: boolean;
+      autoPostDays: string;
+      autoPostTime: string;
+      autoPostTimezone: string;
+      autoPostContent: string;
+    }
+  ) {
+    return this._mediaFolder.model.mediaFolder.update({
+      where: {
+        id,
+        organizationId: org,
+      },
+      data,
+      select: {
+        id: true,
+      },
+    });
+  }
+
+  getAutoPostFolder(org: string, id: string) {
+    return this._mediaFolder.model.mediaFolder.findFirst({
+      where: {
+        id,
+        organizationId: org,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        autoPost: true,
+        autoPostDays: true,
+        autoPostTime: true,
+        autoPostTimezone: true,
+        autoPostContent: true,
+        integrations: {
+          where: {
+            integration: {
+              deletedAt: null,
+              disabled: false,
+            },
+          },
+          select: {
+            integration: {
+              select: {
+                id: true,
+                providerIdentifier: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  getFolderMedia(org: string, folderId: string, ids: string[]) {
+    return this._media.model.media.findMany({
+      where: {
+        id: { in: ids },
+        organizationId: org,
+        folderId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        path: true,
+        originalName: true,
+        thumbnail: true,
+      },
+    });
+  }
+
+  getLastQueued(folderId: string) {
+    return this._mediaFolderQueue.model.mediaFolderQueue.findFirst({
+      where: {
+        folderId,
+      },
+      orderBy: {
+        publishDate: 'desc',
+      },
+      select: {
+        publishDate: true,
+      },
+    });
+  }
+
+  // false when the media already took a slot of this folder
+  async claimQueueSlot(folderId: string, mediaId: string, publishDate: Date) {
+    try {
+      await this._mediaFolderQueue.model.mediaFolderQueue.create({
+        data: {
+          folderId,
+          mediaId,
+          publishDate,
+        },
+        select: {
+          id: true,
+        },
+      });
+      return true;
+    } catch (err) {
+      return false;
+    }
   }
 
   moveMedia(org: string, mediaIds: string[], folderId: string | null) {

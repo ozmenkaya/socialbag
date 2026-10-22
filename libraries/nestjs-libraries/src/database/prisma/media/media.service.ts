@@ -509,6 +509,13 @@ export class MediaService {
       parentId: folder.parentId,
       count: folder._count.media,
       integrations: folder.integrations.map((p) => p.integration),
+      autoPost: {
+        enabled: folder.autoPost,
+        days: JSON.parse(folder.autoPostDays || '[]') as number[],
+        time: folder.autoPostTime,
+        timezone: folder.autoPostTimezone,
+        content: folder.autoPostContent,
+      },
     }));
   }
 

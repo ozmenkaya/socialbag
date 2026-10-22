@@ -1,10 +1,16 @@
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsDefined,
+  IsInt,
   IsOptional,
   IsString,
   Length,
+  Matches,
+  Max,
+  MaxLength,
+  Min,
 } from 'class-validator';
 
 export class CreateMediaFolderDto {
@@ -48,4 +54,33 @@ export class MoveMediaDto {
   @IsOptional()
   @IsString()
   folderId?: string | null;
+}
+
+export class MediaFolderAutoPostDto {
+  @IsDefined()
+  @IsBoolean()
+  enabled: boolean;
+
+  // 0 = Sunday ... 6 = Saturday, in the folder's timezone
+  @IsDefined()
+  @IsArray()
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(6, { each: true })
+  days: number[];
+
+  @IsDefined()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
+  time: string;
+
+  @IsDefined()
+  @IsString()
+  @Length(1, 64)
+  timezone: string;
+
+  // {name} is replaced with the file name
+  @IsDefined()
+  @IsString()
+  @MaxLength(5000)
+  content: string;
 }

@@ -235,6 +235,7 @@ model Media {
   folderId           String?
   organization       Organization        @relation(fields: [organizationId], references: [id])
   folder             MediaFolder?        @relation(fields: [folderId], references: [id])
+  folderQueue        MediaFolderQueue[]
   agencies           SocialMediaAgency[]
   userPicture        User[]
   oauthApps          OAuthApp[]
@@ -246,22 +247,43 @@ model Media {
 }
 
 model MediaFolder {
-  id             String                   @id @default(uuid())
-  organizationId String
-  name           String
-  parentId       String?
-  createdAt      DateTime                 @default(now())
-  updatedAt      DateTime                 @updatedAt
-  deletedAt      DateTime?
-  organization   Organization             @relation(fields: [organizationId], references: [id])
-  parent         MediaFolder?             @relation("MediaFolderTree", fields: [parentId], references: [id])
-  children       MediaFolder[]            @relation("MediaFolderTree")
-  media          Media[]
-  integrations   MediaFolderIntegration[]
+  id               String                   @id @default(uuid())
+  organizationId   String
+  name             String
+  parentId         String?
+  // media added to the folder is drafted on its channels on this schedule
+  autoPost         Boolean                  @default(false)
+  autoPostDays     String                   @default("[]")
+  autoPostTime     String                   @default("10:00")
+  autoPostTimezone String                   @default("UTC")
+  autoPostContent  String                   @default("")
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  deletedAt        DateTime?
+  organization     Organization             @relation(fields: [organizationId], references: [id])
+  parent           MediaFolder?             @relation("MediaFolderTree", fields: [parentId], references: [id])
+  children         MediaFolder[]            @relation("MediaFolderTree")
+  media            Media[]
+  integrations     MediaFolderIntegration[]
+  queue            MediaFolderQueue[]
 
   @@index([organizationId])
   @@index([parentId])
   @@index([deletedAt])
+}
+
+// One slot of a folder's schedule, taken by one media
+model MediaFolderQueue {
+  id          String      @id @default(uuid())
+  folderId    String
+  mediaId     String
+  publishDate DateTime
+  createdAt   DateTime    @default(now())
+  folder      MediaFolder @relation(fields: [folderId], references: [id])
+  media       Media       @relation(fields: [mediaId], references: [id])
+
+  @@unique([folderId, mediaId])
+  @@index([folderId])
 }
 
 // A channel opens and uploads into at most one folder
