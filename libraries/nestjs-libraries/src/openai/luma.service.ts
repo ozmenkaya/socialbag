@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { timer } from '@gitroom/helpers/utils/timer';
 
-const LUMA = 'https://agents.lumalabs.ai/v1/generations';
+const LUMA_API = 'https://agents.lumalabs.ai/v1';
+const LUMA = `${LUMA_API}/generations`;
 
 export type LumaAspectRatio = '1:1' | '4:5' | '9:16' | '16:9';
 
@@ -14,17 +15,29 @@ export interface LumaGeneration {
 
 // Luma Agents API: uni-1 for images, ray-3.2 for videos. Reference pictures
 // are passed as public URLs, which the media library already serves.
+// Every call takes the API key: organizations connect their own in the
+// integrations settings, LUMA_API_KEY is the server wide fallback.
 @Injectable()
 export class LumaService {
-  isEnabled() {
-    return !!process.env.LUMA_API_KEY;
+  // reads the balance, which spends nothing: false when the key is rejected
+  async getCredits(apiKey: string): Promise<false | number> {
+    const response = await fetch(`${LUMA_API}/credits`, {
+      headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!response.ok) {
+      return false;
+    }
+
+    const { balance_credits } = await response.json();
+    return balance_credits ?? 0;
   }
 
-  private async request(url: string, init?: RequestInit): Promise<LumaGeneration> {
+  private async request(apiKey: string, url: string, init?: RequestInit): Promise<LumaGeneration> {
     const response = await fetch(url, {
       ...init,
       headers: {
-        Authorization: `Bearer ${process.env.LUMA_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
         Accept: 'application/json',
       },
@@ -38,12 +51,17 @@ export class LumaService {
     return response.json();
   }
 
-  getGeneration(id: string) {
-    return this.request(`${LUMA}/${encodeURIComponent(id)}`);
+  getGeneration(apiKey: string, id: string) {
+    return this.request(apiKey, `${LUMA}/${encodeURIComponent(id)}`);
   }
 
-  async generateImage(prompt: string, aspectRatio: LumaAspectRatio, references: string[]) {
-    let generation = await this.request(LUMA, {
+  async generateImage(
+    apiKey: string,
+    prompt: string,
+    aspectRatio: LumaAspectRatio,
+    references: string[]
+  ) {
+    let generation = await this.request(apiKey, LUMA, {
       method: 'POST',
       body: JSON.stringify({
         type: 'image',
@@ -63,7 +81,7 @@ export class LumaService {
         throw new Error(generation.failure_reason || 'Luma image generation failed');
       }
       await timer(3000);
-      generation = await this.getGeneration(generation.id);
+      generation = await this.getGeneration(apiKey, generation.id);
     }
 
     const url = generation.output?.find((p) => p.type === 'image')?.url;
@@ -76,14 +94,14 @@ export class LumaService {
   }
 
   // videos take minutes: the caller polls getGeneration with the returned id
-  startVideo(params: {
+  startVideo(apiKey: string, params: {
     prompt: string;
     aspectRatio: LumaAspectRatio;
     duration: '5s' | '10s';
     resolution: '540p' | '720p' | '1080p';
     startFrame?: string;
   }) {
-    return this.request(LUMA, {
+    return this.request(apiKey, LUMA, {
       method: 'POST',
       body: JSON.stringify({
         type: 'video',

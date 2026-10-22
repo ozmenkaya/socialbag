@@ -7,6 +7,7 @@ import { Organization } from '@prisma/client';
 import { SaveMediaInformationDto } from '@gitroom/nestjs-libraries/dtos/media/save.media.information.dto';
 import sharp from 'sharp';
 import { LumaAspectRatio, LumaService } from '@gitroom/nestjs-libraries/openai/luma.service';
+import { ThirdPartyService } from '@gitroom/nestjs-libraries/database/prisma/third-party/third-party.service';
 
 export type DesignSize = 'square' | 'portrait' | 'story' | 'landscape';
 
@@ -114,8 +115,14 @@ export class MediaService {
     private _subscriptionService: SubscriptionService,
     private _videoManager: VideoManager,
     private _temporalService: TemporalService,
-    private _luma: LumaService
+    private _luma: LumaService,
+    private _thirdPartyService: ThirdPartyService
   ) {}
+
+  // the key connected in the integrations settings wins over the server one
+  private async lumaKey(org: string) {
+    return (await this._thirdPartyService.getApiKey(org, 'luma')) || process.env.LUMA_API_KEY;
+  }
 
   async deleteMedia(org: string, id: string) {
     return this._mediaRepository.deleteMedia(org, id);
@@ -574,12 +581,13 @@ export class MediaService {
 
     try {
       // Luma reads the references from their public URLs
-      if (this._luma.isEnabled()) {
+      const lumaKey = await this.lumaKey(org.id);
+      if (lumaKey) {
         const urls = found
           .map((p) => (hasExtension(p.path, 'mp4') ? p.thumbnail : p.path))
           .filter((p): p is string => !!p);
         return await this._subscriptionService.useCredit(org, 'ai_images', () =>
-          this._luma.generateImage(prompt, DESIGN_SIZES[size].luma, urls)
+          this._luma.generateImage(lumaKey, prompt, DESIGN_SIZES[size].luma, urls)
         );
       }
 
@@ -609,8 +617,9 @@ export class MediaService {
       startFrameId?: string;
     }
   ) {
-    if (!this._luma.isEnabled()) {
-      throw new BadRequestException('No video provider is configured (LUMA_API_KEY)');
+    const lumaKey = await this.lumaKey(org);
+    if (!lumaKey) {
+      throw new BadRequestException('Connect Luma AI in Settings > Integrations to generate videos');
     }
 
     let startFrame: string | undefined;
@@ -624,7 +633,7 @@ export class MediaService {
       }
     }
 
-    const generation = await this._luma.startVideo({
+    const generation = await this._luma.startVideo(lumaKey, {
       prompt: params.prompt,
       aspectRatio: DESIGN_SIZES[params.size].luma,
       duration: params.duration,
@@ -648,7 +657,11 @@ export class MediaService {
       return { state: 'completed', media: JSON.parse(saved) };
     }
 
-    const generation = await this._luma.getGeneration(jobId);
+    const lumaKey = await this.lumaKey(org);
+    if (!lumaKey) {
+      throw new BadRequestException('Connect Luma AI in Settings > Integrations to generate videos');
+    }
+    const generation = await this._luma.getGeneration(lumaKey, jobId);
     if (generation.state === 'failed') {
       return { state: 'failed', error: generation.failure_reason || 'Video generation failed' };
     }

@@ -30,6 +30,14 @@ export class ThirdPartyRepository {
     });
   }
 
+  getApiKeyByIdentifier(org: string, identifier: string) {
+    return this._thirdParty.model.thirdParty.findFirst({
+      where: { organizationId: org, identifier, deletedAt: null },
+      orderBy: { updatedAt: 'desc' },
+      select: { apiKey: true },
+    });
+  }
+
   saveIntegration(
     org: string,
     identifier: string,
