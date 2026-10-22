@@ -677,6 +677,7 @@ export class MediaService {
         time: folder.autoPostTime,
         timezone: folder.autoPostTimezone,
         content: folder.autoPostContent,
+        format: folder.autoPostFormat,
       },
     }));
   }

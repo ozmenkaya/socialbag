@@ -981,5 +981,10 @@
   "folder_auto_post_on": "Otomatik paylaşım açık",
   "folder_auto_post_title": "{{name}} klasöründen otomatik paylaşım",
   "media_type_video": "Video",
-  "media_type_photo": "Fotoğraf"
+  "media_type_photo": "Fotoğraf",
+  "folder_auto_post_format": "Gönderi türü",
+  "folder_format_post": "Gönderi (akış, tek video Reels olur)",
+  "folder_format_story": "Hikâye (Story)",
+  "folder_format_trial_reel": "Deneme Reels (önce takip etmeyenlere gösterilir, Keşfet için)",
+  "folder_format_trial_reel_hint": "Yalnızca Instagram'da ve tek video için geçerli; fotoğraflar normal gönderi olarak hazırlanır. İyi performans gösterirse takipçilerinizle de paylaşılır."
 }

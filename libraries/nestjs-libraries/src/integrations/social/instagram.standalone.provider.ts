@@ -3,6 +3,7 @@ import {
   PostDetails,
   PostResponse,
   SocialProvider,
+  PostFormat,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
 import dayjs from 'dayjs';
@@ -229,6 +230,10 @@ export class InstagramStandaloneProvider
     integration: Integration
   ) {
     return instagramProvider.finalizePost(accessToken, pendingData, integration);
+  }
+
+  draftSettings(format: PostFormat, media: { path: string }[]) {
+    return instagramProvider.draftSettings(format, media);
   }
 
   async deletePost(

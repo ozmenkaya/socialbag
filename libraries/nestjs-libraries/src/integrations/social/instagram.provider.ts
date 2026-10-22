@@ -5,6 +5,7 @@ import {
   PostDetails,
   PostResponse,
   SocialProvider,
+  PostFormat,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
 import { timer } from '@gitroom/helpers/utils/timer';
@@ -1091,6 +1092,22 @@ export class InstagramProvider
       pendingData = result.pendingData;
       await timer(30000);
     }
+  }
+
+  // trial reels only take a single video, anything else is drafted as a post
+  draftSettings(format: PostFormat, media: { path: string }[]) {
+    const trialReel =
+      format === 'trial_reel' &&
+      media.length === 1 &&
+      hasExtension(media[0].path, 'mp4');
+
+    return {
+      post_type: format === 'story' ? 'story' : 'post',
+      collaborators: [] as { label: string }[],
+      ...(trialReel
+        ? { is_trial_reel: true, graduation_strategy: 'SS_PERFORMANCE' }
+        : {}),
+    };
   }
 
   async deletePost(

@@ -3,6 +3,7 @@ import {
   IsArray,
   IsBoolean,
   IsDefined,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -83,4 +84,8 @@ export class MediaFolderAutoPostDto {
   @IsString()
   @MaxLength(5000)
   content: string;
+
+  @IsOptional()
+  @IsIn(['post', 'story', 'trial_reel'])
+  format?: 'post' | 'story' | 'trial_reel';
 }

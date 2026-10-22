@@ -6,6 +6,8 @@ import { MediaRepository } from '@gitroom/nestjs-libraries/database/prisma/media
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
+import { PostFormat } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import {
   MediaFolderAutoPostDto,
   MoveMediaDto,
@@ -23,7 +25,8 @@ export class MediaAutoPostService {
   constructor(
     private _mediaRepository: MediaRepository,
     private _mediaService: MediaService,
-    private _postsService: PostsService
+    private _postsService: PostsService,
+    private _integrationManager: IntegrationManager
   ) {}
 
   async updateAutoPost(org: string, id: string, body: MediaFolderAutoPostDto) {
@@ -45,6 +48,7 @@ export class MediaAutoPostService {
       autoPostTime: body.time,
       autoPostTimezone: body.timezone,
       autoPostContent: body.content,
+      autoPostFormat: body.format || 'post',
     });
   }
 
@@ -122,6 +126,10 @@ export class MediaAutoPostService {
 
       // one channel at a time, so a channel that fails does not take the rest along
       for (const { integration } of folder.integrations) {
+        const draftSettings =
+          this._integrationManager
+            .getSocialIntegration(integration.providerIdentifier)
+            ?.draftSettings?.(folder.autoPostFormat as PostFormat, [item]) || {};
         try {
           await this._postsService.createPost(
             org,
@@ -135,6 +143,7 @@ export class MediaAutoPostService {
                 {
                   settings: {
                     __type: integration.providerIdentifier as any,
+                    ...draftSettings,
                   },
                   group: makeId(10),
                   integration: { id: integration.id },

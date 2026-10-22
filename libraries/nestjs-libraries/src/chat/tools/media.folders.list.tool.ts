@@ -41,6 +41,7 @@ Use a folder id with mediaListTool to list the media inside it, with mediaMoveTo
               days: z.array(z.number()),
               time: z.string(),
               timezone: z.string(),
+              format: z.string().describe('post, story or trial_reel (reels shown to non-followers first)'),
             }),
           })
         ),
@@ -79,6 +80,7 @@ Use a folder id with mediaListTool to list the media inside it, with mediaMoveTo
               days: p.autoPost.days,
               time: p.autoPost.time,
               timezone: p.autoPost.timezone,
+              format: p.autoPost.format,
             },
           })),
         };

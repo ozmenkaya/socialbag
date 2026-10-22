@@ -27,6 +27,7 @@ export interface MediaFolderItem {
     time: string;
     timezone: string;
     content: string;
+    format: 'post' | 'story' | 'trial_reel';
   };
 }
 
@@ -235,6 +236,7 @@ const FolderAutoPostModal: FC<{
   const [days, setDays] = useState<number[]>(folder.autoPost.days);
   const [time, setTime] = useState(folder.autoPost.time);
   const [content, setContent] = useState(folder.autoPost.content);
+  const [format, setFormat] = useState(folder.autoPost.format || 'post');
   const [saving, setSaving] = useState(false);
   // a folder that was never set up follows the browser's timezone
   const timezone =
@@ -268,7 +270,7 @@ const FolderAutoPostModal: FC<{
     setSaving(true);
     const response = await fetch(`/media-folders/${folder.id}/auto-post`, {
       method: 'PUT',
-      body: JSON.stringify({ enabled, days, time, timezone, content }),
+      body: JSON.stringify({ enabled, days, time, timezone, content, format }),
     });
     setSaving(false);
     if (!response.ok) {
@@ -280,7 +282,7 @@ const FolderAutoPostModal: FC<{
     }
     onSaved();
     modals.closeCurrent();
-  }, [fetch, folder.id, enabled, days, time, timezone, content, onSaved, modals, toaster, t]);
+  }, [fetch, folder.id, enabled, days, time, timezone, content, format, onSaved, modals, toaster, t]);
 
   return (
     <div className="flex flex-col gap-[16px]">
@@ -306,6 +308,28 @@ const FolderAutoPostModal: FC<{
         />
         {t('folder_auto_post_enabled', 'Draft new media automatically')}
       </label>
+      <div className="flex flex-col gap-[8px]">
+        <div className="text-[14px]">{t('folder_auto_post_format', 'Post type')}</div>
+        <select
+          value={format}
+          onChange={(e) => setFormat(e.target.value as typeof format)}
+          className="w-full h-[44px] px-[14px] rounded-[8px] bg-newBgColorInner border border-newColColor text-[14px] outline-none"
+        >
+          <option value="post">{t('folder_format_post', 'Post (feed, a single video becomes a Reel)')}</option>
+          <option value="story">{t('folder_format_story', 'Story')}</option>
+          <option value="trial_reel">
+            {t('folder_format_trial_reel', 'Trial Reel (shown to non-followers first, for Explore)')}
+          </option>
+        </select>
+        {format === 'trial_reel' && (
+          <div className="text-[12px] text-textItemBlur">
+            {t(
+              'folder_format_trial_reel_hint',
+              'Only on Instagram and only for a single video; photos are drafted as normal posts. If it performs well it is shared with your followers too.'
+            )}
+          </div>
+        )}
+      </div>
       <div className="flex flex-col gap-[8px]">
         <div className="text-[14px]">{t('days', 'Days')}</div>
         <div className="flex gap-[6px] flex-wrap">

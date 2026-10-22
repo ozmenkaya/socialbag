@@ -257,6 +257,7 @@ model MediaFolder {
   autoPostTime     String                   @default("10:00")
   autoPostTimezone String                   @default("UTC")
   autoPostContent  String                   @default("")
+  autoPostFormat   String                   @default("post")
   createdAt        DateTime                 @default(now())
   updatedAt        DateTime                 @updatedAt
   deletedAt        DateTime?

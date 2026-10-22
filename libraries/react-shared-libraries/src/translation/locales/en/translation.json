@@ -983,5 +983,10 @@
   "folder_auto_post_on": "Auto post is on",
   "folder_auto_post_title": "Auto post from {{name}}",
   "media_type_video": "Video",
-  "media_type_photo": "Photo"
+  "media_type_photo": "Photo",
+  "folder_auto_post_format": "Post type",
+  "folder_format_post": "Post (feed, a single video becomes a Reel)",
+  "folder_format_story": "Story",
+  "folder_format_trial_reel": "Trial Reel (shown to non-followers first, for Explore)",
+  "folder_format_trial_reel_hint": "Only on Instagram and only for a single video; photos are drafted as normal posts. If it performs well it is shared with your followers too."
 }

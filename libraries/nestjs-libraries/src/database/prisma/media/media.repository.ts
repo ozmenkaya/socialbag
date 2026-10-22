@@ -205,6 +205,7 @@ export class MediaRepository {
         autoPostTime: true,
         autoPostTimezone: true,
         autoPostContent: true,
+        autoPostFormat: true,
         integrations: {
           select: {
             integration: {
@@ -325,6 +326,7 @@ export class MediaRepository {
       autoPostTime: string;
       autoPostTimezone: string;
       autoPostContent: string;
+      autoPostFormat: string;
     }
   ) {
     return this._mediaFolder.model.mediaFolder.update({
@@ -353,6 +355,7 @@ export class MediaRepository {
         autoPostTime: true,
         autoPostTimezone: true,
         autoPostContent: true,
+        autoPostFormat: true,
         integrations: {
           where: {
             integration: {

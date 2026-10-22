@@ -127,7 +127,15 @@ export interface ISocialMediaIntegration {
     postId: string,
     integration: Integration
   ): Promise<void>; // Removes an already published post from the platform
+
+  draftSettings?(
+    format: PostFormat,
+    media: { path: string }[]
+  ): Record<string, any>; // Provider settings for a post drafted automatically in this format
 }
+
+// How an automatically drafted post is published, each provider maps it to its own settings
+export type PostFormat = 'post' | 'story' | 'trial_reel';
 
 export type PostResponse = {
   id: string; // The db internal id of the post
