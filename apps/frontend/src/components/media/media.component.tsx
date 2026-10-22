@@ -56,6 +56,7 @@ import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 import { useDebounce } from 'use-debounce';
 import {
   FolderSelection,
+  folderPath,
   MediaFoldersSelect,
   MediaFoldersSidebar,
   MoveToFolderModal,
@@ -543,6 +544,13 @@ export const MediaBox: FC<{
       <div className="flex flex-col flex-1 min-w-0">
         <div className="hidden mobile:block mb-[8px]">
           <MediaFoldersSelect selected={folder} onSelect={setFolder} />
+        </div>
+        <div className="mb-[8px] text-[14px] font-[600] mobile:hidden">
+          {folder === 'all'
+            ? t('all_media', 'All media')
+            : folder === 'root'
+            ? t('no_folder', 'No folder')
+            : folderPath(folders || [], folder)}
         </div>
         <div
           className={clsx(

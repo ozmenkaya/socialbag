@@ -1,6 +1,6 @@
 'use client';
 
-import React, { FC, useCallback, useMemo, useState } from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import clsx from 'clsx';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
@@ -399,6 +399,22 @@ export const MediaFoldersSidebar: FC<{
   const toaster = useToaster();
   const { data: folders, mutate } = useMediaFolders();
   const [expanded, setExpanded] = useState<string[]>([]);
+
+  // a folder opened from outside (e.g. the channel's folder) must be visible
+  useEffect(() => {
+    if (!folders || selected === 'all' || selected === 'root') {
+      return;
+    }
+    const parents: string[] = [];
+    let current = folders.find((p) => p.id === selected);
+    while (current?.parentId) {
+      parents.push(current.parentId);
+      current = folders.find((p) => p.id === current!.parentId);
+    }
+    if (parents.length) {
+      setExpanded((prev) => [...new Set([...prev, ...parents])]);
+    }
+  }, [folders, selected]);
 
   const toggle = useCallback((id: string) => {
     setExpanded((prev) =>
