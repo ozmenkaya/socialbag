@@ -740,8 +740,30 @@ export const MediaBox: FC<{
                       </svg>
                     </div>
                     <div
+                      className="absolute bottom-[8px] start-[8px] z-[100] w-[24px] h-[24px] rounded-[6px] bg-black/60 text-white flex items-center justify-center"
+                      data-tooltip-id="tooltip"
+                      data-tooltip-content={
+                        hasExtension(media.path, 'mp4')
+                          ? t('media_type_video', 'Video')
+                          : t('media_type_photo', 'Photo')
+                      }
+                    >
+                      {hasExtension(media.path, 'mp4') ? (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <rect x="3" y="6" width="13" height="12" rx="2" stroke="currentColor" strokeWidth="2" />
+                          <path d="M16 10.5L21 7.5V16.5L16 13.5" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+                        </svg>
+                      ) : (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="2" />
+                          <circle cx="9" cy="10" r="2" stroke="currentColor" strokeWidth="2" />
+                          <path d="M4 18L10 13L14 16L17 13L20 16" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </div>
+                    <div
                       className={clsx(
-                        'absolute bottom-[10px] start-[10px] end-[10px] z-[100] truncate text-end mobile:text-[12px]',
+                        'absolute bottom-[10px] start-[40px] end-[10px] z-[100] truncate text-end mobile:text-[12px]',
                         !standalone && 'mobile:hidden'
                       )}
                     >

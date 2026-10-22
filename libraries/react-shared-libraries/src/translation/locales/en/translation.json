@@ -981,5 +981,7 @@
   "folder_auto_post_name_hint": "{name} is replaced with the file name",
   "folder_auto_post": "Auto post",
   "folder_auto_post_on": "Auto post is on",
-  "folder_auto_post_title": "Auto post from {{name}}"
+  "folder_auto_post_title": "Auto post from {{name}}",
+  "media_type_video": "Video",
+  "media_type_photo": "Photo"
 }

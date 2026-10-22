@@ -979,5 +979,7 @@
   "folder_auto_post_name_hint": "{name} dosya adıyla değiştirilir",
   "folder_auto_post": "Otomatik paylaşım",
   "folder_auto_post_on": "Otomatik paylaşım açık",
-  "folder_auto_post_title": "{{name}} klasöründen otomatik paylaşım"
+  "folder_auto_post_title": "{{name}} klasöründen otomatik paylaşım",
+  "media_type_video": "Video",
+  "media_type_photo": "Fotoğraf"
 }
