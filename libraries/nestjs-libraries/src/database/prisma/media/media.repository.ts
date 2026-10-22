@@ -1,10 +1,19 @@
-import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
+import {
+  PrismaRepository,
+  PrismaTransaction,
+} from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
 import { SaveMediaInformationDto } from '@gitroom/nestjs-libraries/dtos/media/save.media.information.dto';
 
 @Injectable()
 export class MediaRepository {
-  constructor(private _media: PrismaRepository<'media'>) {}
+  constructor(
+    private _media: PrismaRepository<'media'>,
+    private _mediaFolder: PrismaRepository<'mediaFolder'>,
+    private _mediaFolderIntegration: PrismaRepository<'mediaFolderIntegration'>,
+    private _integration: PrismaRepository<'integration'>,
+    private _transaction: PrismaTransaction
+  ) {}
 
   saveFile(org: string, fileName: string, filePath: string, originalName?: string) {
     return this._media.model.media.create({
@@ -119,17 +128,21 @@ export class MediaRepository {
     });
   }
 
-  async getMedia(org: string, page: number, search?: string) {
+  // folder: undefined lists everything, 'root' only media outside folders
+  async getMedia(org: string, page: number, search?: string, folder?: string) {
     const pageNum = (page || 1) - 1;
     const trimmedSearch = search?.trim();
-    const searchFilter = trimmedSearch
-      ? {
-          originalName: {
-            contains: trimmedSearch,
-            mode: 'insensitive' as const,
-          },
-        }
-      : {};
+    const searchFilter = {
+      ...(trimmedSearch
+        ? {
+            originalName: {
+              contains: trimmedSearch,
+              mode: 'insensitive' as const,
+            },
+          }
+        : {}),
+      ...(folder ? { folderId: folder === 'root' ? null : folder } : {}),
+    };
     const query = {
       where: {
         organization: {
@@ -170,5 +183,142 @@ export class MediaRepository {
       pages,
       results,
     };
+  }
+
+  getFolders(org: string) {
+    return this._mediaFolder.model.mediaFolder.findMany({
+      where: {
+        organizationId: org,
+        deletedAt: null,
+      },
+      orderBy: {
+        name: 'asc',
+      },
+      select: {
+        id: true,
+        name: true,
+        parentId: true,
+        integrations: {
+          select: {
+            integration: {
+              select: {
+                id: true,
+                name: true,
+                picture: true,
+                providerIdentifier: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            media: {
+              where: {
+                deletedAt: null,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  createFolder(org: string, name: string, parentId?: string) {
+    return this._mediaFolder.model.mediaFolder.create({
+      data: {
+        organizationId: org,
+        name,
+        parentId: parentId || null,
+      },
+      select: {
+        id: true,
+      },
+    });
+  }
+
+  updateFolder(
+    org: string,
+    id: string,
+    data: { name?: string; parentId?: string | null }
+  ) {
+    return this._mediaFolder.model.mediaFolder.update({
+      where: {
+        id,
+        organizationId: org,
+      },
+      data,
+      select: {
+        id: true,
+      },
+    });
+  }
+
+  countIntegrations(org: string, ids: string[]) {
+    return this._integration.model.integration.count({
+      where: {
+        id: { in: ids },
+        organizationId: org,
+        deletedAt: null,
+      },
+    });
+  }
+
+  // A channel belongs to one folder, linking it here unlinks it elsewhere
+  setFolderIntegrations(folderId: string, integrationIds: string[]) {
+    return this._transaction.model.$transaction([
+      this._mediaFolderIntegration.model.mediaFolderIntegration.deleteMany({
+        where: {
+          OR: [{ folderId }, { integrationId: { in: integrationIds } }],
+        },
+      }),
+      this._mediaFolderIntegration.model.mediaFolderIntegration.createMany({
+        data: integrationIds.map((integrationId) => ({
+          folderId,
+          integrationId,
+        })),
+      }),
+    ]);
+  }
+
+  // Media of the removed folders moves up to moveTo (null: outside folders)
+  deleteFolders(org: string, ids: string[], moveTo: string | null) {
+    return this._transaction.model.$transaction([
+      this._media.model.media.updateMany({
+        where: {
+          organizationId: org,
+          folderId: { in: ids },
+        },
+        data: {
+          folderId: moveTo,
+        },
+      }),
+      this._mediaFolderIntegration.model.mediaFolderIntegration.deleteMany({
+        where: {
+          folderId: { in: ids },
+        },
+      }),
+      this._mediaFolder.model.mediaFolder.updateMany({
+        where: {
+          organizationId: org,
+          id: { in: ids },
+        },
+        data: {
+          deletedAt: new Date(),
+        },
+      }),
+    ]);
+  }
+
+  moveMedia(org: string, mediaIds: string[], folderId: string | null) {
+    return this._media.model.media.updateMany({
+      where: {
+        organizationId: org,
+        id: { in: mediaIds },
+        deletedAt: null,
+      },
+      data: {
+        folderId,
+      },
+    });
   }
 }

@@ -54,6 +54,13 @@ import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { useShallow } from 'zustand/react/shallow';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 import { useDebounce } from 'use-debounce';
+import {
+  FolderSelection,
+  MediaFoldersSelect,
+  MediaFoldersSidebar,
+  MoveToFolderModal,
+  useMediaFolders,
+} from '@gitroom/frontend/components/media/media.folders';
 const Polonto = dynamic(
   () => import('@gitroom/frontend/components/launches/polonto')
 );
@@ -217,26 +224,71 @@ export const MediaBox: FC<{
   standalone?: boolean;
   type?: 'image' | 'video';
   closeModal: () => void;
-}> = ({ type, standalone, setMedia }) => {
+  // channels of the post being edited, the library opens their folder
+  integrationIds?: string[];
+}> = ({ type, standalone, setMedia, integrationIds }) => {
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebounce(search, 300);
+  const [folder, setFolder] = useState<FolderSelection>('all');
   const fetch = useFetch();
   const modals = useModals();
   const toaster = useToaster();
+  const { data: folders, mutate: mutateFolders } = useMediaFolders();
+  // the uploader keeps its first callbacks, it reads the open folder from here
+  const folderRef = useRef<FolderSelection>('all');
+  folderRef.current = folder;
+  const openedLinkedFolder = useRef(false);
+  useEffect(() => {
+    if (openedLinkedFolder.current || !folders || !integrationIds?.length) {
+      return;
+    }
+    openedLinkedFolder.current = true;
+    const linked = folders.find((f) =>
+      f.integrations.some((p) => integrationIds.includes(p.id))
+    );
+    if (linked) {
+      setFolder(linked.id);
+    }
+  }, [folders, integrationIds]);
   useEffect(() => {
     setPage(0);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, folder]);
   const loadMedia = useCallback(async () => {
     const params = new URLSearchParams({ page: String(page + 1) });
     if (debouncedSearch.trim()) {
       params.set('search', debouncedSearch.trim());
     }
+    if (folder !== 'all') {
+      params.set('folder', folder);
+    }
     return (await fetch(`/media?${params.toString()}`)).json();
-  }, [page, debouncedSearch]);
+  }, [page, debouncedSearch, folder]);
   const { data, mutate, isLoading } = useSWR(
-    `get-media-${page}-${debouncedSearch}`,
+    `get-media-${page}-${debouncedSearch}-${folder}`,
     loadMedia
+  );
+  const mutateRef = useRef(mutate);
+  mutateRef.current = mutate;
+  const moveToFolder = useCallback(
+    (media: Media) => (e: any) => {
+      e.stopPropagation();
+      modals.openModal({
+        title: t('move_to_folder', 'Move to folder'),
+        withCloseButton: true,
+        children: (
+          <MoveToFolderModal
+            mediaIds={[media.id]}
+            current={folder === 'all' ? undefined : folder}
+            onMoved={() => {
+              mutate();
+              mutateFolders();
+            }}
+          />
+        ),
+      });
+    },
+    [modals, folder, mutate, mutateFolders]
   );
   const [selected, setSelected] = useState([]);
   const t = useT();
@@ -252,7 +304,18 @@ export const MediaBox: FC<{
         ? 'video/mp4'
         : 'image/*,video/mp4',
     onUploadSuccess: async (arr) => {
-      await mutate();
+      const target = folderRef.current;
+      if (target !== 'all' && target !== 'root' && arr?.length) {
+        await fetch('/media-folders/move', {
+          method: 'PUT',
+          body: JSON.stringify({
+            media: arr.map((p: any) => p.id).filter(Boolean),
+            folderId: target,
+          }),
+        });
+        mutateFolders();
+      }
+      await mutateRef.current();
       if (standalone) {
         return;
       }
@@ -471,7 +534,16 @@ export const MediaBox: FC<{
 
   return (
     <DropFiles disabled={loading} className="flex flex-col flex-1" onDrop={dragAndDrop}>
-      <div className="flex flex-col flex-1">
+      <div className="flex flex-1 gap-[16px]">
+      <MediaFoldersSidebar
+        selected={folder}
+        onSelect={setFolder}
+        onChanged={() => mutate()}
+      />
+      <div className="flex flex-col flex-1 min-w-0">
+        <div className="hidden mobile:block mb-[8px]">
+          <MediaFoldersSelect selected={folder} onSelect={setFolder} />
+        </div>
         <div
           className={clsx(
             'flex items-center gap-[12px] mobile:flex-wrap',
@@ -566,6 +638,8 @@ export const MediaBox: FC<{
                         'no_media_match_search',
                         'No media matches your search'
                       )
+                    : folder !== 'all'
+                    ? t('folder_is_empty', 'This folder is empty')
                     : t(
                         'you_dont_have_any_media_yet',
                         "You don't have any media yet"
@@ -642,6 +716,21 @@ export const MediaBox: FC<{
                         onClick={deleteImage(media)}
                       />
                     )}
+                    <div
+                      onClick={moveToFolder(media)}
+                      data-tooltip-id="tooltip"
+                      data-tooltip-content={t('move_to_folder', 'Move to folder')}
+                      className="cursor-pointer hidden z-[100] group-hover:flex mobile:!hidden absolute -top-[5px] -start-[5px] w-[24px] h-[24px] rounded-full bg-black/60 text-white items-center justify-center"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path
+                          d="M3 7C3 5.89543 3.89543 5 5 5H9L11 7H19C20.1046 7 21 7.89543 21 9V17C21 18.1046 20.1046 19 19 19H5C3.89543 19 3 18.1046 3 17V7Z"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </div>
                     <div
                       className={clsx(
                         'absolute bottom-[10px] start-[10px] end-[10px] z-[100] truncate text-end mobile:text-[12px]',
@@ -723,6 +812,7 @@ export const MediaBox: FC<{
           </div>
         )}
       </div>
+      </div>
     </DropFiles>
   );
 };
@@ -787,6 +877,20 @@ export const MultiMediaComponent: FC<{
   const user = useUser();
   const modals = useModals();
   const t = useT();
+  const { currentIntegration, selectedIntegrations } = useLaunchStore(
+    useShallow((state) => ({
+      currentIntegration: state.current,
+      selectedIntegrations: state.selectedIntegrations,
+    }))
+  );
+  // the channel being edited, or every selected channel in the global editor
+  const integrationIds = useMemo(
+    () =>
+      currentIntegration && currentIntegration !== 'global'
+        ? [currentIntegration]
+        : selectedIntegrations.map((p) => p.integration.id),
+    [currentIntegration, selectedIntegrations]
+  );
   useEffect(() => {
     if (value) {
       setCurrentMedia(value);
@@ -837,10 +941,11 @@ export const MultiMediaComponent: FC<{
           setMedia={changeMedia}
           closeModal={close}
           type={insertInContent ? 'image' : undefined}
+          integrationIds={integrationIds}
         />
       ),
     });
-  }, [changeMedia, insertInContent, t]);
+  }, [changeMedia, insertInContent, integrationIds, t]);
 
   const clearMedia = useCallback(
     (topIndex: number) => () => {

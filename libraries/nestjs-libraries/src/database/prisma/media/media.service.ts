@@ -5,6 +5,12 @@ import { generationError } from '@gitroom/nestjs-libraries/openai/generation.err
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { Organization } from '@prisma/client';
 import { SaveMediaInformationDto } from '@gitroom/nestjs-libraries/dtos/media/save.media.information.dto';
+import {
+  CreateMediaFolderDto,
+  MediaFolderIntegrationsDto,
+  MoveMediaDto,
+  UpdateMediaFolderDto,
+} from '@gitroom/nestjs-libraries/dtos/media/media.folder.dto';
 import { VideoManager } from '@gitroom/nestjs-libraries/videos/video.manager';
 import { VideoDto } from '@gitroom/nestjs-libraries/dtos/videos/video.dto';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
@@ -491,8 +497,103 @@ export class MediaService {
     );
   }
 
-  getMedia(org: string, page: number, search?: string) {
-    return this._mediaRepository.getMedia(org, page, search);
+  getMedia(org: string, page: number, search?: string, folder?: string) {
+    return this._mediaRepository.getMedia(org, page, search, folder);
+  }
+
+  async getFolders(org: string) {
+    const folders = await this._mediaRepository.getFolders(org);
+    return folders.map((folder) => ({
+      id: folder.id,
+      name: folder.name,
+      parentId: folder.parentId,
+      count: folder._count.media,
+      integrations: folder.integrations.map((p) => p.integration),
+    }));
+  }
+
+  private async findFolder(org: string, id: string) {
+    const folders = await this._mediaRepository.getFolders(org);
+    const folder = folders.find((p) => p.id === id);
+    if (!folder) {
+      throw new BadRequestException('Folder not found');
+    }
+
+    return { folder, folders };
+  }
+
+  // the folder itself and every folder below it
+  private folderTree(folders: { id: string; parentId: string | null }[], id: string) {
+    const ids = [id];
+    for (let i = 0; i < ids.length; i++) {
+      ids.push(...folders.filter((p) => p.parentId === ids[i]).map((p) => p.id));
+    }
+
+    return ids;
+  }
+
+  async createFolder(org: string, body: CreateMediaFolderDto) {
+    if (body.parentId) {
+      await this.findFolder(org, body.parentId);
+    }
+
+    return this._mediaRepository.createFolder(org, body.name.trim(), body.parentId);
+  }
+
+  async updateFolder(org: string, id: string, body: UpdateMediaFolderDto) {
+    const { folders } = await this.findFolder(org, id);
+    if (body.parentId) {
+      if (this.folderTree(folders, id).includes(body.parentId)) {
+        throw new BadRequestException('A folder can not be moved inside itself');
+      }
+      if (!folders.some((p) => p.id === body.parentId)) {
+        throw new BadRequestException('Folder not found');
+      }
+    }
+
+    return this._mediaRepository.updateFolder(org, id, {
+      ...(body.name ? { name: body.name.trim() } : {}),
+      ...(body.parentId !== undefined ? { parentId: body.parentId } : {}),
+    });
+  }
+
+  async setFolderIntegrations(org: string, id: string, body: MediaFolderIntegrationsDto) {
+    await this.findFolder(org, id);
+    const integrations = [...new Set(body.integrations)];
+    if (
+      integrations.length &&
+      (await this._mediaRepository.countIntegrations(org, integrations)) !==
+        integrations.length
+    ) {
+      throw new BadRequestException('Channel not found');
+    }
+
+    await this._mediaRepository.setFolderIntegrations(id, integrations);
+    return { id };
+  }
+
+  async deleteFolder(org: string, id: string) {
+    const { folder, folders } = await this.findFolder(org, id);
+    await this._mediaRepository.deleteFolders(
+      org,
+      this.folderTree(folders, id),
+      folder.parentId
+    );
+
+    return { id };
+  }
+
+  async moveMedia(org: string, body: MoveMediaDto) {
+    if (body.folderId) {
+      await this.findFolder(org, body.folderId);
+    }
+
+    const { count } = await this._mediaRepository.moveMedia(
+      org,
+      body.media,
+      body.folderId || null
+    );
+    return { count };
   }
 
   saveMediaInformation(org: string, data: SaveMediaInformationDto) {

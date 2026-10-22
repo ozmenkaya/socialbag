@@ -47,6 +47,7 @@ model Organization {
   oauthAuthorizations OAuthAuthorization[]
   adsConnections      AdsConnection[]
   postBoosts          PostBoost[]
+  mediaFolders        MediaFolder[]
 
   @@index([apiKey])
   @@index([streakSince])
@@ -231,7 +232,9 @@ model Media {
   thumbnailTimestamp Int?
   status             String              @default("ready")
   processingError    String?
+  folderId           String?
   organization       Organization        @relation(fields: [organizationId], references: [id])
+  folder             MediaFolder?        @relation(fields: [folderId], references: [id])
   agencies           SocialMediaAgency[]
   userPicture        User[]
   oauthApps          OAuthApp[]
@@ -239,6 +242,37 @@ model Media {
   @@index([name])
   @@index([organizationId])
   @@index([type])
+  @@index([folderId])
+}
+
+model MediaFolder {
+  id             String                   @id @default(uuid())
+  organizationId String
+  name           String
+  parentId       String?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  deletedAt      DateTime?
+  organization   Organization             @relation(fields: [organizationId], references: [id])
+  parent         MediaFolder?             @relation("MediaFolderTree", fields: [parentId], references: [id])
+  children       MediaFolder[]            @relation("MediaFolderTree")
+  media          Media[]
+  integrations   MediaFolderIntegration[]
+
+  @@index([organizationId])
+  @@index([parentId])
+  @@index([deletedAt])
+}
+
+// A channel opens and uploads into at most one folder
+model MediaFolderIntegration {
+  folderId      String
+  integrationId String      @unique
+  folder        MediaFolder @relation(fields: [folderId], references: [id])
+  integration   Integration @relation(fields: [integrationId], references: [id])
+
+  @@id([folderId, integrationId])
+  @@index([folderId])
 }
 
 model SocialMediaAgency {
@@ -395,6 +429,7 @@ model Integration {
   customer              Customer?              @relation(fields: [customerId], references: [id])
   organization          Organization           @relation(fields: [organizationId], references: [id])
   webhooks              IntegrationsWebhooks[]
+  mediaFolders          MediaFolderIntegration[]
   orderItems            OrderItems[]
   plugs                 Plugs[]
   posts                 Post[]
