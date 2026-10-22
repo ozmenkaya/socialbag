@@ -10,6 +10,7 @@ import { ModuleRef } from '@nestjs/core';
 import { toolList } from '@gitroom/nestjs-libraries/chat/tools/tool.list';
 import { AgentToolInterface } from '@gitroom/nestjs-libraries/chat/agent.tool.interface';
 import dayjs from 'dayjs';
+import { OPENROUTER_DEFAULT_MODEL } from '@gitroom/nestjs-libraries/3rdparties/openrouter/openrouter.provider';
 import { ThirdPartyService } from '@gitroom/nestjs-libraries/database/prisma/third-party/third-party.service';
 
 export const AgentState = object({
@@ -28,9 +29,22 @@ export class LoadToolsService {
     private _thirdPartyService: ThirdPartyService
   ) {}
 
-  // the keys connected in Settings > Integrations, Claude first, then
-  // OPENAI_API_KEY as the server wide fallback
+  // the keys connected in Settings > Integrations, OpenRouter (with the model
+  // picked there) first, then Claude, then OPENAI_API_KEY as the server wide fallback
   async agentModel(org?: string): Promise<MastraModelConfig | undefined> {
+    const openrouter = org && (await this._thirdPartyService.getConnection(org, 'openrouter'));
+    if (openrouter) {
+      return createOpenAI({
+        name: 'openrouter',
+        baseURL: 'https://openrouter.ai/api/v1',
+        apiKey: openrouter.apiKey,
+        headers: {
+          ...(process.env.FRONTEND_URL ? { 'HTTP-Referer': process.env.FRONTEND_URL } : {}),
+          'X-Title': 'Postiz',
+        },
+      }).chat(openrouter.choice || OPENROUTER_DEFAULT_MODEL);
+    }
+
     const claude = org && (await this._thirdPartyService.getApiKey(org, 'anthropic'));
     if (claude) {
       return createAnthropic({ apiKey: claude })('claude-opus-5-5');

@@ -20,6 +20,14 @@ export interface ThirdPartyParams {
     placeholder: string;
     validation?: RegExp;
   }[];
+  // One option the user picks after connecting (for example a model): the
+  // provider method `function` lists the possible values
+  choice?: {
+    title: string;
+    function: string;
+    // used until the user picks one
+    default: string;
+  };
   // An integration installed on the other platform instead of connected here
   // with an API key: the list opens this link. undefined hides it
   installUrl?: () => string | undefined;

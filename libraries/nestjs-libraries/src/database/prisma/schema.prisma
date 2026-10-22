@@ -822,6 +822,8 @@ model ThirdParty {
   name           String
   internalId     String
   apiKey         String
+  // JSON, what the user picked for the integration (for example the agent model)
+  settings       String?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   deletedAt      DateTime?

@@ -21,6 +21,7 @@ export class ThirdPartyManager {
         title: p.title,
         description: p.description,
         fields: p.fields || [],
+        choice: p.choice,
         installUrl: p.installUrl?.(),
       }));
   }
@@ -45,6 +46,10 @@ export class ThirdPartyManager {
 
   getAllThirdPartiesByOrganization(org: string) {
     return this._thirdPartyService.getAllThirdPartiesByOrganization(org);
+  }
+
+  saveChoice(org: string, id: string, value: string) {
+    return this._thirdPartyService.saveChoice(org, id, value);
   }
 
   saveIntegration(

@@ -20,8 +20,22 @@ export class ThirdPartyService {
 
   // decrypted key of a connected integration, for services that call it themselves
   async getApiKey(org: string, identifier: string) {
+    return (await this.getConnection(org, identifier))?.apiKey;
+  }
+
+  // the key with what the user picked for it (ThirdPartyParams.choice)
+  async getConnection(org: string, identifier: string) {
     const found = await this._thirdPartyRepository.getApiKeyByIdentifier(org, identifier);
-    return found ? AuthService.fixedDecryption(found.apiKey) : undefined;
+    if (!found) {
+      return undefined;
+    }
+
+    const settings: { choice?: string } = JSON.parse(found.settings || '{}');
+    return { apiKey: AuthService.fixedDecryption(found.apiKey), choice: settings.choice };
+  }
+
+  saveChoice(org: string, id: string, value: string) {
+    return this._thirdPartyRepository.saveSettings(org, id, JSON.stringify({ choice: value }));
   }
 
   saveIntegration(

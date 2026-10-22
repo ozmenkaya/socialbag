@@ -5,6 +5,7 @@ import {
   HttpException,
   Param,
   Post,
+  Put,
   Delete,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -15,6 +16,7 @@ import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
 import { ImportMediaDto } from '@gitroom/nestjs-libraries/dtos/third-party/import-media.dto';
+import { ThirdPartyChoiceDto } from '@gitroom/nestjs-libraries/dtos/third-party/choice.dto';
 
 @ApiTags('Third Party')
 @Controller('/third-party')
@@ -38,8 +40,8 @@ export class ThirdPartyController {
         await this._thirdPartyManager.getAllThirdPartiesByOrganization(
           organization.id
         )
-      ).map((thirdParty) => {
-        const { description, fields, position, title, identifier } =
+      ).map(({ settings, ...thirdParty }) => {
+        const { description, fields, position, title, choice } =
           this._thirdPartyManager.getThirdPartyByName(thirdParty.identifier);
         return {
           ...thirdParty,
@@ -47,6 +49,10 @@ export class ThirdPartyController {
           position,
           fields,
           description,
+          choice,
+          chosen: choice
+            ? JSON.parse(settings || '{}').choice || choice.default
+            : undefined,
         };
       })
     );
@@ -120,6 +126,40 @@ export class ThirdPartyController {
       AuthService.fixedDecryption(thirdParty.apiKey),
       data
     );
+  }
+
+  @Put('/:id/choice')
+  async saveChoice(
+    @GetOrgFromRequest() organization: Organization,
+    @Param('id') id: string,
+    @Body() body: ThirdPartyChoiceDto
+  ) {
+    const thirdParty = await this._thirdPartyManager.getIntegrationById(
+      organization.id,
+      id
+    );
+
+    if (!thirdParty) {
+      throw new HttpException('Integration not found', 404);
+    }
+
+    const thirdPartyInstance = this._thirdPartyManager.getThirdPartyByName(
+      thirdParty.identifier
+    );
+
+    if (!thirdPartyInstance?.choice) {
+      throw new HttpException('Nothing to choose for this integration', 400);
+    }
+
+    const options: { id: string }[] = await thirdPartyInstance.instance[
+      thirdPartyInstance.choice.function
+    ]!(AuthService.fixedDecryption(thirdParty.apiKey));
+    if (!options.some((p) => p.id === body.value)) {
+      throw new HttpException('Invalid choice', 400);
+    }
+
+    await this._thirdPartyManager.saveChoice(organization.id, id, body.value);
+    return { value: body.value };
   }
 
   @Post('/:id/import')

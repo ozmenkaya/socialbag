@@ -9,7 +9,7 @@ import {
   identifier: 'openai',
   title: 'OpenAI (Agent)',
   description:
-    'Runs the agent with GPT. When Claude is connected too, the agent uses Claude.',
+    'Runs the agent with GPT, when OpenRouter or Claude is not connected.',
   fields: [],
 })
 export class OpenaiProvider extends ThirdPartyAbstract {

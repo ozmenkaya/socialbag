@@ -8,7 +8,7 @@ import {
 @ThirdParty({
   identifier: 'anthropic',
   title: 'Claude (Agent)',
-  description: 'Runs the agent with Claude, it is used before OpenAI when both are connected.',
+  description: 'Runs the agent with Claude Opus, when OpenRouter is not connected.',
   fields: [],
 })
 export class AnthropicProvider extends ThirdPartyAbstract {

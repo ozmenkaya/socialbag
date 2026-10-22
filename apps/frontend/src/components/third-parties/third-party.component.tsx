@@ -3,7 +3,7 @@
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { ThirdPartyListComponent } from '@gitroom/frontend/components/third-parties/third-party.list.component';
-import React, { FC, useCallback, useState } from 'react';
+import React, { FC, useCallback, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -91,6 +91,88 @@ export const ThirdPartyMenuComponent: FC<{
   );
 };
 
+const useThirdPartyChoices = (id: string, func: string) => {
+  const fetch = useFetch();
+  const load = useCallback(async () => {
+    return (
+      await fetch(`/third-party/function/${id}/${func}`, { method: 'POST', body: '{}' })
+    ).json();
+  }, [id, func]);
+
+  return useSWR<{ id: string; name: string }[]>(`third-party-choices-${id}`, load, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+  });
+};
+
+// the option picked after connecting, for example the model of the agent
+export const ThirdPartyChoiceComponent: FC<{
+  tParty: {
+    id: string;
+    choice: { title: string; function: string };
+    chosen?: string;
+  };
+  reload: () => void;
+}> = ({ tParty, reload }) => {
+  const t = useT();
+  const fetch = useFetch();
+  const toaster = useToaster();
+  const { data, isLoading } = useThirdPartyChoices(tParty.id, tParty.choice.function);
+  const [search, setSearch] = useState('');
+
+  const options = useMemo(() => {
+    const text = search.toLowerCase();
+    return (data || []).filter(
+      (p) =>
+        p.id === tParty.chosen ||
+        p.name.toLowerCase().includes(text) ||
+        p.id.toLowerCase().includes(text)
+    );
+  }, [data, search, tParty.chosen]);
+
+  const save = useCallback(
+    async (value: string) => {
+      const res = await fetch(`/third-party/${tParty.id}/choice`, {
+        method: 'PUT',
+        body: JSON.stringify({ value }),
+      });
+
+      if (!res.ok) {
+        toaster.show(t('could_not_save', 'Could not save'), 'warning');
+        return;
+      }
+
+      toaster.show(t('saved', 'Saved'), 'success');
+      reload();
+    },
+    [tParty.id, reload]
+  );
+
+  return (
+    <div className="flex items-center gap-[8px] min-w-0">
+      <div className="text-[13px] text-textItemBlur">{tParty.choice.title}</div>
+      <input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder={t('search', 'Search')}
+        className="h-[32px] w-[120px] px-[10px] rounded-[6px] bg-newBgColorInner border border-newColColor text-[13px] outline-none"
+      />
+      <select
+        disabled={isLoading}
+        value={tParty.chosen || ''}
+        onChange={(e) => save(e.target.value)}
+        className="h-[32px] max-w-[260px] px-[8px] rounded-[6px] bg-newBgColorInner border border-newColColor text-[13px] outline-none"
+      >
+        {options.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+};
+
 export const ThirdPartyComponent = () => {
   const t = useT();
   const fetch = useFetch();
@@ -140,7 +222,12 @@ export const ThirdPartyComponent = () => {
                       {p.name}
                     </div>
                   </div>
-                  <ThirdPartyMenuComponent reload={mutate} tParty={p} />
+                  <div className="flex items-center gap-[12px]">
+                    {!!p.choice && (
+                      <ThirdPartyChoiceComponent tParty={p} reload={mutate} />
+                    )}
+                    <ThirdPartyMenuComponent reload={mutate} tParty={p} />
+                  </div>
                 </div>
               ))}
             </div>

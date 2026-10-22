@@ -5,6 +5,7 @@ import { HubspotProvider } from '@gitroom/nestjs-libraries/3rdparties/hubspot/hu
 import { LumaProvider } from '@gitroom/nestjs-libraries/3rdparties/luma/luma.provider';
 import { OpenaiProvider } from '@gitroom/nestjs-libraries/3rdparties/openai/openai.provider';
 import { AnthropicProvider } from '@gitroom/nestjs-libraries/3rdparties/anthropic/anthropic.provider';
+import { OpenrouterProvider } from '@gitroom/nestjs-libraries/3rdparties/openrouter/openrouter.provider';
 import { ThirdPartyManager } from '@gitroom/nestjs-libraries/3rdparties/thirdparty.manager';
 
 @Global()
@@ -16,6 +17,7 @@ import { ThirdPartyManager } from '@gitroom/nestjs-libraries/3rdparties/thirdpar
     LumaProvider,
     OpenaiProvider,
     AnthropicProvider,
+    OpenrouterProvider,
     ThirdPartyManager,
   ],
   get exports() {

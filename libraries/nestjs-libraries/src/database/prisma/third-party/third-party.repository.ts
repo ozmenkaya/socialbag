@@ -13,6 +13,7 @@ export class ThirdPartyRepository {
         id: true,
         name: true,
         identifier: true,
+        settings: true,
       },
     });
   }
@@ -34,7 +35,15 @@ export class ThirdPartyRepository {
     return this._thirdParty.model.thirdParty.findFirst({
       where: { organizationId: org, identifier, deletedAt: null },
       orderBy: { updatedAt: 'desc' },
-      select: { apiKey: true },
+      select: { apiKey: true, settings: true },
+    });
+  }
+
+  saveSettings(org: string, id: string, settings: string) {
+    return this._thirdParty.model.thirdParty.update({
+      where: { id, organizationId: org, deletedAt: null },
+      data: { settings },
+      select: { id: true },
     });
   }
 
