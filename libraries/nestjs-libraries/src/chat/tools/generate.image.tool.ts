@@ -8,11 +8,6 @@ import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { MediaAutoPostService } from '@gitroom/nestjs-libraries/database/prisma/media/media.autopost.service';
 
-const SIZES = {
-  square: '1024x1024',
-  portrait: '1024x1536',
-  landscape: '1536x1024',
-} as const;
 
 @Injectable()
 export class GenerateImageTool implements AgentToolInterface {
@@ -51,9 +46,9 @@ export class GenerateImageTool implements AgentToolInterface {
           .optional()
           .describe('Media ids (mediaListTool) the design is based on'),
         size: z
-          .enum(['square', 'portrait', 'landscape'])
+          .enum(['square', 'portrait', 'story', 'landscape'])
           .optional()
-          .describe('square 1:1, portrait 2:3 (stories, reels), landscape 3:2'),
+          .describe('square 1:1, portrait 4:5 (feed posts), story 9:16 (stories, reels), landscape 16:9'),
         folderId: z
           .string()
           .optional()
@@ -84,7 +79,7 @@ export class GenerateImageTool implements AgentToolInterface {
               ? await this._mediaService.generateDesign(
                   org,
                   inputData.prompt,
-                  SIZES[(inputData.size || 'square') as keyof typeof SIZES],
+                  inputData.size || 'square',
                   inputData.referenceMediaIds || []
                 )
               : await this._mediaService.generateImage(inputData.prompt, org);

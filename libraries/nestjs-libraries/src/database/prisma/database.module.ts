@@ -53,6 +53,7 @@ import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/adm
 import { AdsRepository } from '@gitroom/nestjs-libraries/database/prisma/ads/ads.repository';
 import { AdsService } from '@gitroom/nestjs-libraries/database/prisma/ads/ads.service';
 import { AdsManager } from '@gitroom/nestjs-libraries/ads/ads.manager';
+import { LumaService } from '@gitroom/nestjs-libraries/openai/luma.service';
 import { MediaAutoPostService } from '@gitroom/nestjs-libraries/database/prisma/media/media.autopost.service';
 
 @Global()
@@ -97,6 +98,7 @@ import { MediaAutoPostService } from '@gitroom/nestjs-libraries/database/prisma/
     ClippingService,
     ClippingRepository,
     FalService,
+    LumaService,
     EmailService,
     TrackService,
     ShortLinkService,

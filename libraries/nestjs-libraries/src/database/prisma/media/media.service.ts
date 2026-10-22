@@ -6,6 +6,20 @@ import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/s
 import { Organization } from '@prisma/client';
 import { SaveMediaInformationDto } from '@gitroom/nestjs-libraries/dtos/media/save.media.information.dto';
 import sharp from 'sharp';
+import { LumaAspectRatio, LumaService } from '@gitroom/nestjs-libraries/openai/luma.service';
+
+export type DesignSize = 'square' | 'portrait' | 'story' | 'landscape';
+
+// square 1:1, portrait 4:5 (feed), story 9:16 (stories, reels), landscape 16:9
+const DESIGN_SIZES: Record<
+  DesignSize,
+  { luma: LumaAspectRatio; openai: '1024x1024' | '1024x1536' | '1536x1024' }
+> = {
+  square: { luma: '1:1', openai: '1024x1024' },
+  portrait: { luma: '4:5', openai: '1024x1536' },
+  story: { luma: '9:16', openai: '1024x1536' },
+  landscape: { luma: '16:9', openai: '1536x1024' },
+};
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import {
   CreateMediaFolderDto,
@@ -99,7 +113,8 @@ export class MediaService {
     private _openAi: OpenaiService,
     private _subscriptionService: SubscriptionService,
     private _videoManager: VideoManager,
-    private _temporalService: TemporalService
+    private _temporalService: TemporalService,
+    private _luma: LumaService
   ) {}
 
   async deleteMedia(org: string, id: string) {
@@ -549,7 +564,7 @@ export class MediaService {
   async generateDesign(
     org: Organization,
     prompt: string,
-    size: '1024x1024' | '1024x1536' | '1536x1024',
+    size: DesignSize,
     referenceIds: string[]
   ) {
     const found = await this._mediaRepository.getMediaByIds(org.id, referenceIds);
@@ -557,21 +572,95 @@ export class MediaService {
       throw new BadRequestException('Reference media not found');
     }
 
-    const references: { data: Buffer; name: string; type: string }[] = [];
-    for (const media of found) {
-      const data = await this.loadPicture(media, 2048);
-      if (data) {
-        references.push({ data, name: `${media.id}.jpg`, type: 'image/jpeg' });
-      }
-    }
-
     try {
+      // Luma reads the references from their public URLs
+      if (this._luma.isEnabled()) {
+        const urls = found
+          .map((p) => (hasExtension(p.path, 'mp4') ? p.thumbnail : p.path))
+          .filter((p): p is string => !!p);
+        return await this._subscriptionService.useCredit(org, 'ai_images', () =>
+          this._luma.generateImage(prompt, DESIGN_SIZES[size].luma, urls)
+        );
+      }
+
+      const references: { data: Buffer; name: string; type: string }[] = [];
+      for (const media of found) {
+        const data = await this.loadPicture(media, 2048);
+        if (data) {
+          references.push({ data, name: `${media.id}.jpg`, type: 'image/jpeg' });
+        }
+      }
+
       return await this._subscriptionService.useCredit(org, 'ai_images', () =>
-        this._openAi.generateDesign(prompt, size, references)
+        this._openAi.generateDesign(prompt, DESIGN_SIZES[size].openai, references)
       );
     } catch (err) {
       throw generationError(err);
     }
+  }
+
+  async startDesignVideo(
+    org: string,
+    params: {
+      prompt: string;
+      size: DesignSize;
+      duration: '5s' | '10s';
+      resolution: '540p' | '720p' | '1080p';
+      startFrameId?: string;
+    }
+  ) {
+    if (!this._luma.isEnabled()) {
+      throw new BadRequestException('No video provider is configured (LUMA_API_KEY)');
+    }
+
+    let startFrame: string | undefined;
+    if (params.startFrameId) {
+      const [media] = await this._mediaRepository.getMediaByIds(org, [params.startFrameId]);
+      startFrame = media
+        ? (hasExtension(media.path, 'mp4') ? media.thumbnail : media.path) || undefined
+        : undefined;
+      if (!startFrame) {
+        throw new BadRequestException('Start frame media not found');
+      }
+    }
+
+    const generation = await this._luma.startVideo({
+      prompt: params.prompt,
+      aspectRatio: DESIGN_SIZES[params.size].luma,
+      duration: params.duration,
+      resolution: params.resolution,
+      startFrame,
+    });
+    await ioRedis.set(`design-video:${generation.id}`, org, 'EX', 7 * 24 * 3600);
+
+    return { jobId: generation.id, state: generation.state };
+  }
+
+  // saves the video in the library once, later calls return the same media
+  async finishDesignVideo(org: string, jobId: string) {
+    const owner = await ioRedis.get(`design-video:${jobId}`);
+    if (owner !== org) {
+      throw new BadRequestException('Video job not found');
+    }
+
+    const saved = await ioRedis.get(`design-video-media:${jobId}`);
+    if (saved) {
+      return { state: 'completed', media: JSON.parse(saved) };
+    }
+
+    const generation = await this._luma.getGeneration(jobId);
+    if (generation.state === 'failed') {
+      return { state: 'failed', error: generation.failure_reason || 'Video generation failed' };
+    }
+
+    const url = generation.output?.find((p) => p.type === 'video')?.url;
+    if (generation.state !== 'completed' || !url) {
+      return { state: generation.state };
+    }
+
+    const media = await this.uploadFromUrl(org, url);
+    await ioRedis.set(`design-video-media:${jobId}`, JSON.stringify(media), 'EX', 7 * 24 * 3600);
+    return { state: 'completed', media, created: true };
   }
 
   async getFolders(org: string) {

@@ -24,6 +24,8 @@ import { MediaFoldersListTool } from '@gitroom/nestjs-libraries/chat/tools/media
 import { MediaFolderCreateTool } from '@gitroom/nestjs-libraries/chat/tools/media.folder.create.tool';
 import { MediaMoveTool } from '@gitroom/nestjs-libraries/chat/tools/media.move.tool';
 import { MediaViewTool } from '@gitroom/nestjs-libraries/chat/tools/media.view.tool';
+import { DesignVideoTool } from '@gitroom/nestjs-libraries/chat/tools/design.video.tool';
+import { DesignVideoStatusTool } from '@gitroom/nestjs-libraries/chat/tools/design.video.status.tool';
 
 export const toolList = [
   IntegrationListTool,
@@ -48,6 +50,8 @@ export const toolList = [
   MediaFoldersListTool,
   MediaFolderCreateTool,
   MediaMoveTool,
+  DesignVideoTool,
+  DesignVideoStatusTool,
   MediaStatusTool,
   UploadWidgetTool,
   UploadWidgetTicketTool,
