@@ -6,6 +6,9 @@ const LUMA = `${LUMA_API}/generations`;
 
 export type LumaAspectRatio = '1:1' | '4:5' | '9:16' | '16:9';
 
+// uni-1-max costs about 2.5 times uni-1 for a sharper result
+export type LumaImageQuality = 'standard' | 'max';
+
 export interface LumaGeneration {
   id: string;
   state: 'queued' | 'processing' | 'completed' | 'failed';
@@ -59,13 +62,14 @@ export class LumaService {
     apiKey: string,
     prompt: string,
     aspectRatio: LumaAspectRatio,
-    references: string[]
+    references: string[],
+    quality: LumaImageQuality = 'standard'
   ) {
     let generation = await this.request(apiKey, LUMA, {
       method: 'POST',
       body: JSON.stringify({
         type: 'image',
-        model: process.env.LUMA_IMAGE_MODEL || 'uni-1',
+        model: quality === 'max' ? 'uni-1-max' : process.env.LUMA_IMAGE_MODEL || 'uni-1',
         prompt,
         aspect_ratio: aspectRatio,
         output_format: 'jpeg',

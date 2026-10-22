@@ -6,7 +6,7 @@ import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/s
 import { Organization } from '@prisma/client';
 import { SaveMediaInformationDto } from '@gitroom/nestjs-libraries/dtos/media/save.media.information.dto';
 import sharp from 'sharp';
-import { LumaAspectRatio, LumaService } from '@gitroom/nestjs-libraries/openai/luma.service';
+import { LumaAspectRatio, LumaImageQuality, LumaService } from '@gitroom/nestjs-libraries/openai/luma.service';
 import { ThirdPartyService } from '@gitroom/nestjs-libraries/database/prisma/third-party/third-party.service';
 
 export type DesignSize = 'square' | 'portrait' | 'story' | 'landscape';
@@ -572,7 +572,8 @@ export class MediaService {
     org: Organization,
     prompt: string,
     size: DesignSize,
-    referenceIds: string[]
+    referenceIds: string[],
+    quality?: LumaImageQuality
   ) {
     const found = await this._mediaRepository.getMediaByIds(org.id, referenceIds);
     if (found.length !== new Set(referenceIds).size) {
@@ -587,7 +588,7 @@ export class MediaService {
           .map((p) => (hasExtension(p.path, 'mp4') ? p.thumbnail : p.path))
           .filter((p): p is string => !!p);
         return await this._subscriptionService.useCredit(org, 'ai_images', () =>
-          this._luma.generateImage(lumaKey, prompt, DESIGN_SIZES[size].luma, urls)
+          this._luma.generateImage(lumaKey, prompt, DESIGN_SIZES[size].luma, urls, quality)
         );
       }
 

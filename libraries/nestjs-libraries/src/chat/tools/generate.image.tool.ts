@@ -53,6 +53,12 @@ export class GenerateImageTool implements AgentToolInterface {
           .string()
           .optional()
           .describe('Folder id (mediaFoldersListTool) to save the result in'),
+        quality: z
+          .enum(['standard', 'max'])
+          .optional()
+          .describe(
+            'Luma only: max is sharper with cleaner text on the picture and costs about 2.5 times standard, use it when the user asks for it'
+          ),
       }),
       // Mastra validates the return against this schema, so it must also
       // allow the graceful { error } shape (same as uploadFromUrlTool)
@@ -75,12 +81,13 @@ export class GenerateImageTool implements AgentToolInterface {
           }
 
           const image =
-            inputData.referenceMediaIds?.length || inputData.size
+            inputData.referenceMediaIds?.length || inputData.size || inputData.quality
               ? await this._mediaService.generateDesign(
                   org,
                   inputData.prompt,
                   inputData.size || 'square',
-                  inputData.referenceMediaIds || []
+                  inputData.referenceMediaIds || [],
+                  inputData.quality
                 )
               : await this._mediaService.generateImage(inputData.prompt, org);
           if (!image) {
