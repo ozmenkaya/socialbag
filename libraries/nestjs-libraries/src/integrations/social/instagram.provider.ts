@@ -34,6 +34,11 @@ export class InstagramProvider
   name = 'Instagram\n(Facebook Business)';
   isBetweenSteps = true;
   toolTip = 'Instagram must be business and connected to a Facebook page';
+  connectRequirements = [
+    'The Instagram account must be a Professional account (Business or Creator).',
+    'The Instagram account must be linked to a Facebook Page that you manage.',
+    'You need to be an admin of that Facebook Page.',
+  ];
   scopes = [
     'instagram_basic',
     'pages_show_list',

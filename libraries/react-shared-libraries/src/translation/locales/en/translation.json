@@ -1009,5 +1009,22 @@
   "projects_description": "Group the channels, media folders and raw material of each project of this customer.",
   "no_projects": "No projects yet",
   "project_no_channels": "No channels",
-  "drive_folder": "Drive folder"
+  "drive_folder": "Drive folder",
+  "before_you_connect": "Before you connect",
+  "connect_requirements_intro": "Before connecting this channel, please make sure of the following:",
+  "dont_show_this_again": "Don't show this again",
+  "source_pending": "Waiting",
+  "source_syncing": "Listing files...",
+  "source_ready": "{{count}} files",
+  "source_no_access": "Not shared",
+  "source_error": "Error",
+  "project_sync_failed": "Could not sync the project",
+  "copied": "Copied",
+  "drive_share_with": "Share the Drive folders of the projects as Viewer with:",
+  "drive_not_configured": "Google Drive is not connected on this server yet: the Drive folders are saved, their files are listed once it is.",
+  "files_images": "{{count}} photos",
+  "files_videos": "{{count}} videos",
+  "files_documents": "{{count}} documents",
+  "sync_now": "Sync",
+  "source_shared_by": "Shared by {{email}}"
 }

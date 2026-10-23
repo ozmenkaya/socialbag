@@ -2,6 +2,7 @@
 
 import React, { FC, useCallback, useState } from 'react';
 import useSWR from 'swr';
+import clsx from 'clsx';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -26,8 +27,24 @@ export interface ProjectItem {
     providerIdentifier: string;
   }[];
   folders: { id: string; name: string }[];
-  sources: { id: string; type: string; externalId: string; url: string }[];
+  sources: {
+    id: string;
+    type: string;
+    externalId: string;
+    url: string;
+    name: string | null;
+    status: 'pending' | 'syncing' | 'ready' | 'no_access' | 'error';
+    error: string | null;
+    fileCount: number;
+    sharedBy: string | null;
+    syncedAt: string | null;
+  }[];
+  // files found in the Drive folders, by kind
+  files: Record<string, number>;
 }
+
+const isSyncing = (projects?: ProjectItem[]) =>
+  !!projects?.some((p) => p.sources.some((s) => s.status === 'syncing'));
 
 export const useProjects = () => {
   const fetch = useFetch();
@@ -35,7 +52,53 @@ export const useProjects = () => {
     return (await fetch('/projects')).json();
   }, [fetch]);
 
-  return useSWR<ProjectItem[]>('projects', load);
+  // follows the sync while a Drive folder is being listed
+  return useSWR<ProjectItem[]>('projects', load, {
+    refreshInterval: (data) => (isSyncing(data) ? 3000 : 0),
+  });
+};
+
+const useDriveInfo = () => {
+  const fetch = useFetch();
+  const load = useCallback(async () => {
+    return (await fetch('/projects/drive')).json();
+  }, [fetch]);
+
+  return useSWR<{ enabled: boolean; email: string | null }>('projects-drive', load, {
+    revalidateOnFocus: false,
+  });
+};
+
+const SourceStatus: FC<{ source: ProjectItem['sources'][number] }> = ({ source }) => {
+  const t = useT();
+  const label = {
+    pending: t('source_pending', 'Waiting'),
+    syncing: t('source_syncing', 'Listing files...'),
+    ready: t('source_ready', '{{count}} files', { count: source.fileCount }),
+    no_access: t('source_no_access', 'Not shared'),
+    error: t('source_error', 'Error'),
+  }[source.status];
+
+  return (
+    <span
+      className={clsx(
+        'text-[11px] px-[6px] py-[1px] rounded-[4px] shrink-0',
+        source.status === 'ready' && 'bg-[#12B76A]/20 text-[#12B76A]',
+        (source.status === 'no_access' || source.status === 'error') &&
+          'bg-[#F97066]/20 text-[#F97066]',
+        (source.status === 'pending' || source.status === 'syncing') && 'bg-boxHover'
+      )}
+      data-tooltip-id="tooltip"
+      data-tooltip-content={
+        source.error ||
+        (source.sharedBy
+          ? t('source_shared_by', 'Shared by {{email}}', { email: source.sharedBy })
+          : undefined)
+      }
+    >
+      {label}
+    </span>
+  );
 };
 
 const inputClass =
@@ -217,6 +280,29 @@ export const ProjectsComponent = () => {
   const modals = useModals();
   const toaster = useToaster();
   const { data, isLoading, mutate } = useProjects();
+  const { data: drive } = useDriveInfo();
+
+  const sync = useCallback(
+    (project: ProjectItem) => async () => {
+      const response = await fetch(`/projects/${project.id}/sync`, { method: 'POST' });
+      if (!response.ok) {
+        toaster.show(
+          await errorMessage(response, t('project_sync_failed', 'Could not sync the project')),
+          'warning'
+        );
+        return;
+      }
+      mutate();
+    },
+    [fetch, mutate, toaster, t]
+  );
+
+  const copyEmail = useCallback(async () => {
+    if (drive?.email) {
+      await navigator.clipboard.writeText(drive.email);
+      toaster.show(t('copied', 'Copied'), 'success');
+    }
+  }, [drive, toaster, t]);
 
   const open = useCallback(
     (project?: ProjectItem) => () => {
@@ -269,6 +355,34 @@ export const ProjectsComponent = () => {
         </div>
         <Button onClick={open()}>{t('new_project', 'New project')}</Button>
       </div>
+      {!!drive && (
+        <div className="flex items-center gap-[10px] flex-wrap p-[12px] rounded-[8px] border border-newColColor text-[13px]">
+          {drive.email ? (
+            <>
+              <span className="text-textItemBlur">
+                {t(
+                  'drive_share_with',
+                  'Share the Drive folders of the projects as Viewer with:'
+                )}
+              </span>
+              <span className="font-[600] break-all">{drive.email}</span>
+              <span
+                className="cursor-pointer text-[#612BD3] hover:underline"
+                onClick={copyEmail}
+              >
+                {t('copy', 'Copy')}
+              </span>
+            </>
+          ) : (
+            <span className="text-textItemBlur">
+              {t(
+                'drive_not_configured',
+                'Google Drive is not connected on this server yet: the Drive folders are saved, their files are listed once it is.'
+              )}
+            </span>
+          )}
+        </div>
+      )}
       {isLoading ? (
         <div className="text-textItemBlur">{t('loading', 'Loading...')}</div>
       ) : !data?.length ? (
@@ -323,18 +437,49 @@ export const ProjectsComponent = () => {
                 ))}
               </div>
               {!!project.sources.length && (
-                <div className="flex flex-col gap-[2px]">
+                <div className="flex flex-col gap-[4px]">
                   {project.sources.map((p) => (
-                    <a
-                      key={p.id}
-                      href={p.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[12px] text-textItemBlur hover:text-newTextColor truncate"
-                    >
-                      {t('drive_folder', 'Drive folder')} · {p.externalId}
-                    </a>
+                    <div key={p.id} className="flex items-center gap-[8px] min-w-0">
+                      <a
+                        href={p.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[12px] text-textItemBlur hover:text-newTextColor truncate"
+                      >
+                        {p.name || `${t('drive_folder', 'Drive folder')} · ${p.externalId}`}
+                      </a>
+                      <SourceStatus source={p} />
+                    </div>
                   ))}
+                  <div className="flex items-center justify-between gap-[8px] text-[12px]">
+                    <span className="text-textItemBlur">
+                      {[
+                        ['image', t('files_images', '{{count}} photos', { count: project.files.image })],
+                        ['video', t('files_videos', '{{count}} videos', { count: project.files.video })],
+                        ['document', t('files_documents', '{{count}} documents', { count: project.files.document })],
+                      ]
+                        .filter(([kind]) => project.files[kind])
+                        .map(([, label]) => label)
+                        .join(' · ')}
+                    </span>
+                    {!!drive?.email && (
+                      <span
+                        className={clsx(
+                          'shrink-0',
+                          project.sources.some((s) => s.status === 'syncing')
+                            ? 'text-textItemBlur'
+                            : 'cursor-pointer text-[#612BD3] hover:underline'
+                        )}
+                        onClick={
+                          project.sources.some((s) => s.status === 'syncing')
+                            ? undefined
+                            : sync(project)
+                        }
+                      >
+                        {t('sync_now', 'Sync')}
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

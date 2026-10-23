@@ -3,6 +3,7 @@ import {
   PrismaTransaction,
 } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 
 export interface ProjectData {
@@ -19,6 +20,7 @@ export class ProjectsRepository {
     private _project: PrismaRepository<'project'>,
     private _projectIntegration: PrismaRepository<'projectIntegration'>,
     private _projectSource: PrismaRepository<'projectSource'>,
+    private _projectFile: PrismaRepository<'projectFile'>,
     private _mediaFolder: PrismaRepository<'mediaFolder'>,
     private _integration: PrismaRepository<'integration'>,
     private _transaction: PrismaTransaction
@@ -75,6 +77,13 @@ export class ProjectsRepository {
             type: true,
             externalId: true,
             url: true,
+            name: true,
+            status: true,
+            error: true,
+            fileCount: true,
+            sharedBy: true,
+            syncStartedAt: true,
+            syncedAt: true,
           },
         },
       },
@@ -187,6 +196,14 @@ export class ProjectsRepository {
           projectId: id,
         },
       }),
+      this._projectFile.model.projectFile.deleteMany({
+        where: {
+          projectId: id,
+          source: {
+            externalId: { notIn: data.sources.map((p) => p.externalId) },
+          },
+        },
+      }),
       this._projectSource.model.projectSource.deleteMany({
         where: {
           projectId: id,
@@ -198,6 +215,244 @@ export class ProjectsRepository {
         skipDuplicates: true,
       }),
     ];
+  }
+
+  countFiles(org: string) {
+    return this._projectFile.model.projectFile.groupBy({
+      by: ['projectId', 'kind'],
+      where: {
+        organizationId: org,
+        deletedAt: null,
+      },
+      _count: {
+        _all: true,
+      },
+    });
+  }
+
+  getSources(org: string, projectId: string) {
+    return this._projectSource.model.projectSource.findMany({
+      where: {
+        projectId,
+        project: {
+          organizationId: org,
+          deletedAt: null,
+        },
+      },
+      select: {
+        id: true,
+        type: true,
+        externalId: true,
+        status: true,
+        syncStartedAt: true,
+      },
+    });
+  }
+
+  // a Drive folder is read through the one service account of the server, so
+  // it may only be linked by one customer
+  countSourcesOfOthers(org: string, type: string, externalIds: string[]) {
+    return this._projectSource.model.projectSource.count({
+      where: {
+        type,
+        externalId: { in: externalIds },
+        project: {
+          organizationId: { not: org },
+          deletedAt: null,
+        },
+      },
+    });
+  }
+
+  updateSource(
+    id: string,
+    data: {
+      status: string;
+      name?: string;
+      error?: string | null;
+      fileCount?: number;
+      sharedBy?: string | null;
+      syncStartedAt?: Date;
+      syncedAt?: Date;
+    }
+  ) {
+    return this._projectSource.model.projectSource.update({
+      where: {
+        id,
+      },
+      data,
+      select: {
+        id: true,
+      },
+    });
+  }
+
+  // deleted ones too, so a file put back is restored instead of added again
+  getSourceFiles(sourceId: string) {
+    return this._projectFile.model.projectFile.findMany({
+      where: {
+        sourceId,
+      },
+      select: {
+        id: true,
+        externalId: true,
+        modifiedAt: true,
+        path: true,
+        deletedAt: true,
+      },
+    });
+  }
+
+  createFiles(
+    data: {
+      organizationId: string;
+      projectId: string;
+      sourceId: string;
+      externalId: string;
+      name: string;
+      path: string;
+      mimeType: string;
+      kind: string;
+      size?: bigint;
+      width?: number;
+      height?: number;
+      durationMs?: number;
+      modifiedAt: Date;
+      webUrl: string;
+    }[]
+  ) {
+    return this._projectFile.model.projectFile.createMany({
+      data,
+      skipDuplicates: true,
+    });
+  }
+
+  updateFile(
+    id: string,
+    data: {
+      name: string;
+      path: string;
+      mimeType: string;
+      kind: string;
+      size?: bigint | null;
+      width?: number | null;
+      height?: number | null;
+      durationMs?: number | null;
+      modifiedAt: Date;
+      webUrl: string;
+      deletedAt: null;
+      // a changed file has to be looked at and imported again
+      analysis?: null;
+      analyzedAt?: null;
+      mediaId?: null;
+    }
+  ) {
+    return this._projectFile.model.projectFile.update({
+      where: {
+        id,
+      },
+      data,
+      select: {
+        id: true,
+      },
+    });
+  }
+
+  removeFiles(ids: string[]) {
+    return this._projectFile.model.projectFile.updateMany({
+      where: {
+        id: { in: ids },
+      },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+  }
+
+  getFiles(
+    org: string,
+    projectId: string,
+    query: { kind?: string; search?: string; skip: number; take: number }
+  ) {
+    const where: Prisma.ProjectFileWhereInput = {
+      organizationId: org,
+      projectId,
+      deletedAt: null,
+      ...(query.kind ? { kind: query.kind } : {}),
+      ...(query.search
+        ? {
+            OR: [
+              { name: { contains: query.search, mode: 'insensitive' as const } },
+              { path: { contains: query.search, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+    };
+
+    return this._transaction.model.$transaction([
+      this._projectFile.model.projectFile.count({ where }),
+      this._projectFile.model.projectFile.findMany({
+        where,
+        orderBy: [{ path: 'asc' }, { name: 'asc' }],
+        skip: query.skip,
+        take: query.take,
+        select: {
+          id: true,
+          name: true,
+          path: true,
+          mimeType: true,
+          kind: true,
+          size: true,
+          width: true,
+          height: true,
+          durationMs: true,
+          modifiedAt: true,
+          webUrl: true,
+          mediaId: true,
+          analyzedAt: true,
+        },
+      }),
+    ]);
+  }
+
+  getFile(org: string, id: string) {
+    return this._projectFile.model.projectFile.findFirst({
+      where: {
+        id,
+        organizationId: org,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        externalId: true,
+        name: true,
+        path: true,
+        mimeType: true,
+        kind: true,
+        size: true,
+        width: true,
+        height: true,
+        durationMs: true,
+        webUrl: true,
+        mediaId: true,
+        projectId: true,
+      },
+    });
+  }
+
+  setFileMedia(org: string, id: string, mediaId: string) {
+    return this._projectFile.model.projectFile.update({
+      where: {
+        id,
+        organizationId: org,
+      },
+      data: {
+        mediaId,
+      },
+      select: {
+        id: true,
+      },
+    });
   }
 
   deleteProject(org: string, id: string) {
@@ -214,6 +469,11 @@ export class ProjectsRepository {
         },
         data: {
           projectId: null,
+        },
+      }),
+      this._projectFile.model.projectFile.deleteMany({
+        where: {
+          projectId: id,
         },
       }),
       this._projectSource.model.projectSource.deleteMany({

@@ -1007,5 +1007,22 @@
   "projects_description": "Bu müşterinin her projesinin kanallarını, medya klasörlerini ve ham malzemesini bir arada tutun.",
   "no_projects": "Henüz proje yok",
   "project_no_channels": "Kanal yok",
-  "drive_folder": "Drive klasörü"
+  "drive_folder": "Drive klasörü",
+  "before_you_connect": "Bağlamadan önce",
+  "connect_requirements_intro": "Bu kanalı bağlamadan önce lütfen şunlardan emin ol:",
+  "dont_show_this_again": "Bir daha gösterme",
+  "source_pending": "Bekliyor",
+  "source_syncing": "Dosyalar listeleniyor...",
+  "source_ready": "{{count}} dosya",
+  "source_no_access": "Paylaşılmamış",
+  "source_error": "Hata",
+  "project_sync_failed": "Proje senkronize edilemedi",
+  "copied": "Kopyalandı",
+  "drive_share_with": "Projelerin Drive klasörlerini şu adresle Görüntüleyici olarak paylaşın:",
+  "drive_not_configured": "Google Drive bu sunucuda henüz bağlanmadı: Drive klasörleri kaydedilir, bağlantı kurulunca dosyaları listelenir.",
+  "files_images": "{{count}} fotoğraf",
+  "files_videos": "{{count}} video",
+  "files_documents": "{{count}} belge",
+  "sync_now": "Senkronize et",
+  "source_shared_by": "Paylaşan: {{email}}"
 }

@@ -49,6 +49,7 @@ model Organization {
   postBoosts          PostBoost[]
   mediaFolders        MediaFolder[]
   projects            Project[]
+  projectFiles        ProjectFile[]
 
   @@index([apiKey])
   @@index([streakSince])
@@ -291,6 +292,7 @@ model Project {
   integrations   ProjectIntegration[]
   folders        MediaFolder[]
   sources        ProjectSource[]
+  files          ProjectFile[]
 
   @@index([organizationId])
   @@index([deletedAt])
@@ -309,16 +311,63 @@ model ProjectIntegration {
 
 // Where the raw material of a project lives (a shared Google Drive folder)
 model ProjectSource {
-  id         String   @id @default(uuid())
+  id         String        @id @default(uuid())
   projectId  String
   type       String
   externalId String
   url        String
-  createdAt  DateTime @default(now())
-  project    Project  @relation(fields: [projectId], references: [id])
+  name       String?
+  // pending, syncing, ready, no_access or error (with error)
+  status     String        @default("pending")
+  error      String?
+  fileCount  Int           @default(0)
+  // who shared the folder with the service account, shown on the project
+  sharedBy   String?
+  syncStartedAt DateTime?
+  syncedAt   DateTime?
+  createdAt  DateTime      @default(now())
+  project    Project       @relation(fields: [projectId], references: [id])
+  files      ProjectFile[]
 
   @@unique([projectId, type, externalId])
   @@index([projectId])
+}
+
+// A file found in a project source, listed with its metadata only: the file
+// itself stays in the source until it is imported into the media library
+model ProjectFile {
+  id             String        @id @default(uuid())
+  organizationId String
+  projectId      String
+  sourceId       String
+  externalId     String
+  name           String
+  // folders between the source and the file, "Exterior / Drone"
+  path           String        @default("")
+  mimeType       String
+  // image, video, document or other
+  kind           String
+  size           BigInt?
+  width          Int?
+  height         Int?
+  durationMs     Int?
+  modifiedAt     DateTime
+  webUrl         String
+  mediaId        String?
+  // JSON written by the archive analysis
+  analysis       String?
+  analyzedAt     DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  project        Project       @relation(fields: [projectId], references: [id])
+  source         ProjectSource @relation(fields: [sourceId], references: [id])
+
+  @@unique([sourceId, externalId])
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([deletedAt])
 }
 
 // One slot of a folder's schedule, taken by one media

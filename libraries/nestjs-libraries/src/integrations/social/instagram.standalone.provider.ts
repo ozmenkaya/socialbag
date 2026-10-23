@@ -30,6 +30,11 @@ export class InstagramStandaloneProvider
   name = 'Instagram\n(Standalone)';
   isBetweenSteps = false;
   refreshCron = true;
+  connectRequirements = [
+    'The Instagram account must be a Professional account (Business or Creator). A Facebook Page is not required.',
+    'While the Meta app is in development mode, the account must be added as an Instagram Tester in the Meta app (Roles), and the account owner must accept the invite in Instagram under Settings > Website permissions > Tester invites.',
+    'Log in to Instagram in this browser with the account you want to connect before continuing.',
+  ];
   scopes = [
     'instagram_business_basic',
     'instagram_business_content_publish',

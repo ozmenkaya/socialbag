@@ -1,11 +1,15 @@
+import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
   IsDefined,
+  IsIn,
+  IsInt,
   IsOptional,
   IsString,
   Length,
   MaxLength,
+  Min,
 } from 'class-validator';
 
 // The whole project at once: the lists replace what was linked before
@@ -36,4 +40,28 @@ export class ProjectDto {
   @IsString({ each: true })
   @MaxLength(500, { each: true })
   driveFolders: string[];
+}
+
+export class ProjectFilesQueryDto {
+  @IsOptional()
+  @IsIn(['image', 'video', 'document', 'other'])
+  kind?: 'image' | 'video' | 'document' | 'other';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  search?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  page?: number;
+}
+
+export class ProjectFileImportDto {
+  // media folder (mediaFoldersListTool) the file is put in
+  @IsOptional()
+  @IsString()
+  folderId?: string;
 }

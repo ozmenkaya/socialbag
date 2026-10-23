@@ -13,8 +13,8 @@ export class ProjectsListTool implements AgentToolInterface {
   run() {
     return createTool({
       id: 'projectsListTool',
-      description: `List the projects of this customer (the organization), each with its description, the channels posting for it, its media folders and the Google Drive folders holding its raw material.
-When the user talks about a project, use its channels and its folders (mediaListTool with the folder id) for the posts and designs of that project.`,
+      description: `List the projects of this customer (the organization), each with its description, the channels posting for it, its media folders, the Google Drive folders holding its raw material (with their sync status) and how many files of each kind were found there.
+When the user talks about a project, use its channels and its folders (mediaListTool with the folder id) for the posts and designs of that project, and projectFilesListTool for its raw material.`,
       inputSchema: z.object({}),
       mcp: {
         annotations: {
@@ -35,7 +35,16 @@ When the user talks about a project, use its channels and its folders (mediaList
               z.object({ id: z.string(), name: z.string(), platform: z.string() })
             ),
             folders: z.array(z.object({ id: z.string(), name: z.string() })),
-            driveFolders: z.array(z.string()),
+            driveFolders: z.array(
+              z.object({
+                url: z.string(),
+                name: z.string().nullable(),
+                status: z.string(),
+                error: z.string().nullable(),
+                fileCount: z.number(),
+              })
+            ),
+            files: z.record(z.number()).describe('Files found in Drive by kind'),
           })
         ),
       }),
@@ -57,7 +66,14 @@ When the user talks about a project, use its channels and its folders (mediaList
               platform: i.providerIdentifier,
             })),
             folders: p.folders,
-            driveFolders: p.sources.map((s) => s.url),
+            driveFolders: p.sources.map((s) => ({
+              url: s.url,
+              name: s.name,
+              status: s.status,
+              error: s.error,
+              fileCount: s.fileCount,
+            })),
+            files: p.files,
           })),
         };
       },

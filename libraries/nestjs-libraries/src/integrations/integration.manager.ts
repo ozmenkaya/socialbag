@@ -134,6 +134,7 @@ export class IntegrationManager {
             name: p.name,
             identifier: p.identifier,
             toolTip: p.toolTip,
+            connectRequirements: p.connectRequirements,
             editor: p.editor,
             isExternal: !!p.externalUrl,
             isWeb3: !!p.isWeb3,

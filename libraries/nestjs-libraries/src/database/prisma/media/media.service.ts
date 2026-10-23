@@ -195,6 +195,21 @@ export class MediaService {
       : this.saveFile(org, uploaded.originalname, uploaded.path);
   }
 
+  // a file read from an outside source (a project's Drive folder), kept under its own name
+  async uploadFromStream(
+    org: string,
+    body: ReadableStream,
+    declaredSize: number,
+    originalName: string
+  ) {
+    const uploaded = await uploadStreamToStorage(this.storage, body, declaredSize);
+    return this.saveFile(org, uploaded.originalname, uploaded.path, originalName);
+  }
+
+  getMediaByIds(org: string, ids: string[]) {
+    return this._mediaRepository.getMediaByIds(org, ids);
+  }
+
   saveFile(
     org: string,
     fileName: string,

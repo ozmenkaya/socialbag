@@ -1,11 +1,12 @@
 'use client';
 
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
-import React, { FC, useCallback, useMemo } from 'react';
+import React, { FC, useCallback, useMemo, useState } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { Input } from '@gitroom/react/form/input';
 import { FieldValues, FormProvider, useForm } from 'react-hook-form';
 import { Button } from '@gitroom/react/form/button';
+import { Checkbox } from '@gitroom/react/form/checkbox';
 import { classValidatorResolver } from '@hookform/resolvers/class-validator';
 import { ApiKeyDto } from '@gitroom/nestjs-libraries/dtos/integrations/api.key.dto';
 import { useRouter } from 'next/navigation';
@@ -378,11 +379,83 @@ const ChromeExtensionWarning: FC<{
   );
 };
 
+const connectRequirementsKey = (identifier: string) =>
+  `hide-connect-requirements-${identifier}`;
+
+const isConnectRequirementsHidden = (identifier: string) => {
+  try {
+    return localStorage.getItem(connectRequirementsKey(identifier)) === 'true';
+  } catch {
+    return false;
+  }
+};
+
+const ConnectRequirements: FC<{
+  identifier: string;
+  requirements: string[];
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({ identifier, requirements, onConfirm, onCancel }) => {
+  const modals = useModals();
+  const t = useT();
+  const [hide, setHide] = useState(false);
+  return (
+    <div className="flex flex-col gap-[16px] pt-[8px]">
+      <p className="text-[14px] text-textColor/80">
+        {t(
+          'connect_requirements_intro',
+          'Before connecting this channel, please make sure of the following:'
+        )}
+      </p>
+      <ul className="flex flex-col gap-[8px] list-disc ps-[20px] text-[14px] text-textColor/80">
+        {requirements.map((requirement) => (
+          <li key={requirement}>{requirement}</li>
+        ))}
+      </ul>
+      <Checkbox
+        disableForm={true}
+        name="hideConnectRequirements"
+        checked={hide}
+        onChange={(e) => setHide(e.target.value)}
+        label={t('dont_show_this_again', "Don't show this again")}
+      />
+      <div className="flex gap-[10px] mt-[8px]">
+        <Button
+          type="button"
+          className="flex-1"
+          onClick={() => {
+            if (hide) {
+              try {
+                localStorage.setItem(connectRequirementsKey(identifier), 'true');
+              } catch {}
+            }
+            onConfirm();
+            modals.closeCurrent();
+          }}
+        >
+          {t('continue', 'Continue')}
+        </Button>
+        <Button
+          type="button"
+          className="flex-1 !bg-transparent border border-tableBorder text-textColor"
+          onClick={() => {
+            onCancel();
+            modals.closeCurrent();
+          }}
+        >
+          {t('cancel', 'Cancel')}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 export const AddProviderComponent: FC<{
   social: Array<{
     identifier: string;
     name: string;
     toolTip?: string;
+    connectRequirements?: string[];
     isExternal: boolean;
     isWeb3: boolean;
     isChromeExtension?: boolean;
@@ -427,9 +500,33 @@ export const AddProviderComponent: FC<{
           defaultValue?: string;
           type: 'text' | 'password';
           hint?: string;
-        }>
+        }>,
+        connectRequirements?: string[]
       ) =>
       async () => {
+        if (
+          connectRequirements?.length &&
+          !isConnectRequirementsHidden(identifier)
+        ) {
+          const confirmed = await new Promise<boolean>((resolve) => {
+            modal.openModal({
+              title: t('before_you_connect', 'Before you connect'),
+              withCloseButton: true,
+              onClose: () => resolve(false),
+              children: (
+                <ConnectRequirements
+                  identifier={identifier}
+                  requirements={connectRequirements}
+                  onConfirm={() => resolve(true)}
+                  onCancel={() => resolve(false)}
+                />
+              ),
+            });
+          });
+          if (!confirmed) {
+            return;
+          }
+        }
         const onboardingParam = onboarding ? 'onboarding=true' : '';
         const openWeb3 = async () => {
           const { component: Web3Providers } = web3List.find(
@@ -714,7 +811,8 @@ export const AddProviderComponent: FC<{
                   item.isExternal,
                   item.isWeb3,
                   item.isChromeExtension,
-                  item.customFields
+                  item.customFields,
+                  item.connectRequirements
                 )}
                 {...(!!item.toolTip
                   ? {
