@@ -9,6 +9,7 @@ import {
 } from '@gitroom/nestjs-libraries/google-drive/google.drive.service';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
 import { MediaAutoPostService } from '@gitroom/nestjs-libraries/database/prisma/media/media.autopost.service';
+import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 
 // https://drive.google.com/drive/folders/<id>, .../drive/u/0/folders/<id>,
 // open?id=<id> or the id alone
@@ -309,6 +310,34 @@ export class ProjectsService {
     }
 
     return file;
+  }
+
+  // the tiles of the media library: small previews kept a few hours, so
+  // browsing a project does not ask Drive again for every picture
+  async getFileThumbnail(org: string, id: string) {
+    const file = await this.findFile(org, id);
+    const key = `drive-thumbnail:${file.id}`;
+    const cached = await ioRedis.get(key);
+    if (cached) {
+      // '-': Drive had no preview, asked again after a while
+      return cached === '-' ? undefined : Buffer.from(cached, 'base64');
+    }
+
+    // a folder no longer shared shows no preview instead of failing
+    const thumbnail = await this._googleDriveService
+      .thumbnail(file.externalId, 480)
+      .catch((): undefined => undefined);
+    if (!thumbnail) {
+      await ioRedis.set(key, '-', 'EX', 600);
+      return undefined;
+    }
+
+    const picture = await sharp(thumbnail)
+      .resize(480, 480, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 75 })
+      .toBuffer();
+    await ioRedis.set(key, picture.toString('base64'), 'EX', 6 * 3600);
+    return picture;
   }
 
   // what Drive shows of the file, scaled down to look at it

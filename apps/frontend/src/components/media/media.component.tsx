@@ -55,13 +55,21 @@ import { useShallow } from 'zustand/react/shallow';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 import { useDebounce } from 'use-debounce';
 import {
+  errorMessage,
   FolderSelection,
   folderPath,
   MediaFoldersSelect,
   MediaFoldersSidebar,
   MoveToFolderModal,
+  PROJECT_SELECTION,
   useMediaFolders,
 } from '@gitroom/frontend/components/media/media.folders';
+import {
+  ProjectFileItem,
+  useProjectFiles,
+  useProjects,
+} from '@gitroom/frontend/components/projects/use.projects';
+import { useVariables } from '@gitroom/react/helpers/variable.context';
 const Polonto = dynamic(
   () => import('@gitroom/frontend/components/launches/polonto')
 );
@@ -220,6 +228,354 @@ export const showMediaBox = (
 };
 const CHUNK_SIZE = 1024 * 1024;
 const MAX_UPLOAD_SIZE = 1024 * 1024 * 1024; // 1 GB
+const DriveTile: FC<{
+  file: ProjectFileItem;
+  selectable: boolean;
+  selected: number;
+  importing: boolean;
+  onClick: () => void;
+  onImport?: () => void;
+}> = ({ file, selectable, selected, importing, onClick, onImport }) => {
+  const t = useT();
+  const { backendUrl } = useVariables();
+  const [failed, setFailed] = useState(false);
+
+  return (
+    <div
+      className={clsx(
+        'group px-[3px] py-[3px] mobile:p-[6px] float-left rounded-[6px] w8-max mobile:!w-1/2 mobile:!max-w-[50%] aspect-square',
+        selectable && 'cursor-pointer'
+      )}
+    >
+      <div
+        className={clsx(
+          'w-full h-full rounded-[6px] border-[4px] relative',
+          selected ? 'border-[#612BD3]' : 'border-transparent'
+        )}
+        onClick={onClick}
+      >
+        {!!selected && (
+          <div className="text-white flex z-[101] justify-center items-center text-[14px] font-[500] w-[24px] h-[24px] rounded-full bg-[#612BD3] absolute -bottom-[10px] -end-[10px]">
+            {selected}
+          </div>
+        )}
+        <a
+          href={file.webUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          data-tooltip-id="tooltip"
+          data-tooltip-content={t('open_in_drive', 'Open in Drive')}
+          className="hidden z-[100] group-hover:flex mobile:!hidden absolute -top-[5px] -start-[5px] w-[24px] h-[24px] rounded-full bg-black/60 text-white items-center justify-center"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+            <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </a>
+        {!!file.mediaId && (
+          <div className="absolute top-[8px] end-[8px] z-[100] text-[11px] px-[6px] py-[1px] rounded-[4px] bg-[#12B76A] text-white">
+            {t('in_library', 'In library')}
+          </div>
+        )}
+        {!!onImport && (file.kind === 'image' || file.kind === 'video') && !file.mediaId && (
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!importing) {
+                onImport();
+              }
+            }}
+            className="hidden group-hover:flex mobile:flex absolute top-[8px] end-[8px] z-[100] text-[11px] px-[8px] py-[2px] rounded-[4px] bg-[#612BD3] text-white cursor-pointer"
+          >
+            {importing ? t('importing', 'Importing...') : t('import_to_library', 'Add to library')}
+          </div>
+        )}
+        <div
+          className="absolute bottom-[8px] start-[8px] z-[100] w-[24px] h-[24px] rounded-[6px] bg-black/60 text-white flex items-center justify-center"
+          data-tooltip-id="tooltip"
+          data-tooltip-content={
+            file.kind === 'video'
+              ? t('media_type_video', 'Video')
+              : file.kind === 'image'
+              ? t('media_type_photo', 'Photo')
+              : t('media_type_document', 'Document')
+          }
+        >
+          {file.kind === 'video' ? (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="3" y="6" width="13" height="12" rx="2" stroke="currentColor" strokeWidth="2" />
+              <path d="M16 10.5L21 7.5V16.5L16 13.5" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+            </svg>
+          ) : file.kind === 'image' ? (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="2" />
+              <circle cx="9" cy="10" r="2" stroke="currentColor" strokeWidth="2" />
+              <path d="M4 18L10 13L14 16L17 13L20 16" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+            </svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 3h8l4 4v14H6V3Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+              <path d="M9 12h6M9 16h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          )}
+        </div>
+        <div
+          className="absolute bottom-[10px] start-[40px] end-[10px] z-[100] truncate text-end text-[12px] text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.8)]"
+          data-tooltip-id="tooltip"
+          data-tooltip-content={file.path ? `${file.path} / ${file.name}` : file.name}
+        >
+          {file.name}
+        </div>
+        <div className="w-full h-full rounded-[6px] overflow-hidden relative bg-newSep">
+          {!failed && (
+            <img
+              loading="lazy"
+              width="100%"
+              height="100%"
+              className="w-full h-full object-cover"
+              src={`${backendUrl}/projects/files/${file.id}/thumbnail`}
+              onError={() => setFailed(true)}
+              alt={file.name}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// the files of a project's Drive folders: they are looked at here and copied
+// into the library (or straight into the post) when they are used
+const ProjectDriveFiles: FC<{
+  projectId: string;
+  standalone?: boolean;
+  type?: 'image' | 'video';
+  // media of the library picked before opening the Drive, added with these
+  librarySelected: { id: string; path: string }[];
+  onAdd: (media: { id: string; path: string }[]) => void;
+}> = ({ projectId, standalone, type, librarySelected, onAdd }) => {
+  const t = useT();
+  const fetch = useFetch();
+  const toaster = useToaster();
+  const modals = useModals();
+  const { data: projects } = useProjects();
+  const project = projects?.find((p) => p.id === projectId);
+  const [kind, setKind] = useState<string>(type || '');
+  const [search, setSearch] = useState('');
+  const [debouncedSearch] = useDebounce(search, 300);
+  const [page, setPage] = useState(0);
+  const [selected, setSelected] = useState<ProjectFileItem[]>([]);
+  const [importing, setImporting] = useState<string[]>([]);
+  const [adding, setAdding] = useState(false);
+  useEffect(() => {
+    setPage(0);
+  }, [kind, debouncedSearch, projectId]);
+  const { data, isLoading, mutate } = useProjectFiles(
+    projectId,
+    kind,
+    debouncedSearch.trim(),
+    page
+  );
+
+  const importFile = useCallback(
+    async (file: ProjectFileItem) => {
+      setImporting((prev) => [...prev, file.id]);
+      try {
+        const response = await fetch(`/projects/files/${file.id}/import`, {
+          method: 'POST',
+          body: JSON.stringify({}),
+        });
+        if (!response.ok) {
+          toaster.show(
+            await errorMessage(response, t('import_failed', 'Could not import the file')),
+            'warning'
+          );
+          return undefined;
+        }
+        return (await response.json()) as { id: string; path: string };
+      } catch (err) {
+        toaster.show(t('import_failed', 'Could not import the file'), 'warning');
+        return undefined;
+      } finally {
+        setImporting((prev) => prev.filter((p) => p !== file.id));
+      }
+    },
+    [fetch, toaster, t]
+  );
+
+  // the picker only takes what the post asks for (a picture, a video or both)
+  const pickable = useCallback(
+    (file: ProjectFileItem) =>
+      !standalone &&
+      (type ? file.kind === type : file.kind === 'image' || file.kind === 'video'),
+    [standalone, type]
+  );
+
+  const toggle = useCallback(
+    (file: ProjectFileItem) => () => {
+      if (!pickable(file)) {
+        return;
+      }
+      setSelected((prev) =>
+        prev.some((p) => p.id === file.id)
+          ? prev.filter((p) => p.id !== file.id)
+          : [...prev, file]
+      );
+    },
+    [pickable]
+  );
+
+  const addSelected = useCallback(async () => {
+    setAdding(true);
+    const media: { id: string; path: string }[] = [...librarySelected];
+    try {
+      for (const file of selected) {
+        const imported = await importFile(file);
+        if (imported) {
+          media.push({ id: imported.id, path: imported.path });
+        }
+      }
+    } finally {
+      setAdding(false);
+    }
+    if (media.length) {
+      onAdd(media);
+      modals.closeCurrent();
+    }
+  }, [selected, librarySelected, importFile, onAdd, modals]);
+
+  const ready = project?.sources.some((p) => p.status === 'ready');
+  const kinds = [
+    ['', t('all', 'All')],
+    ['image', t('photos', 'Photos')],
+    ['video', t('videos', 'Videos')],
+    ['document', t('documents', 'Documents')],
+  ].filter(([value]) => !type || value === type);
+
+  return (
+    <div className="flex flex-col flex-1 min-h-0">
+      <div className="mb-[8px] flex items-center gap-[8px] text-[14px] font-[600] mobile:hidden">
+        <span>Drive · {project?.name}</span>
+        <span className="text-[12px] font-[400] text-textItemBlur">
+          {t('drive_files_count', '{{count}} files', { count: data?.total || 0 })}
+        </span>
+      </div>
+      <div className="flex items-center gap-[12px] mobile:flex-wrap mb-[8px]">
+        <div className="flex gap-[4px]">
+          {kinds.map(([value, label]) => (
+            <div
+              key={value}
+              onClick={() => setKind(value)}
+              className={clsx(
+                'h-[36px] px-[12px] flex items-center rounded-[8px] cursor-pointer text-[13px] border border-newColColor',
+                kind === value ? 'bg-[#612BD3] text-white border-[#612BD3]' : 'hover:bg-boxHover'
+              )}
+            >
+              {label}
+            </div>
+          ))}
+        </div>
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t('search_drive_files', 'Search by file or folder name')}
+          className="flex-1 mobile:basis-full h-[36px] px-[14px] rounded-[8px] bg-newBgColorInner border border-newColColor text-[14px] outline-none focus:border-[#612BD3]"
+        />
+      </div>
+      <div className="flex-1 relative min-h-[300px]">
+        <div className="absolute -left-[3px] -top-[3px] withp3 h-full overflow-x-hidden overflow-y-auto scrollbar scrollbar-thumb-newColColor scrollbar-track-newBgColorInner mobile:-left-[6px] mobile:-top-[6px] mobile:!w-[calc(100%+12px)] mobile:!h-[calc(100%+12px)]">
+          {isLoading &&
+            [...new Array(16)].map((_, i) => (
+              <div
+                key={i}
+                className="px-[3px] py-[3px] mobile:p-[6px] float-left rounded-[6px] w8-max mobile:!w-1/2 mobile:!max-w-[50%] aspect-square"
+              >
+                <div className="w-full h-full bg-newSep rounded-[6px] animate-pulse" />
+              </div>
+            ))}
+          {!isLoading && !data?.files?.length && (
+            <div className="h-full flex flex-col items-center justify-center gap-[12px] text-center px-[20px]">
+              <NoMediaIcon />
+              <div className="text-[16px] font-[600]">
+                {debouncedSearch || kind
+                  ? t('no_drive_files_match', 'No file matches')
+                  : ready
+                  ? t('drive_folder_empty', 'No files were found in the Drive folders')
+                  : t('drive_not_listed', 'The Drive folders of this project are not listed yet')}
+              </div>
+              {!ready && (
+                <>
+                  {project?.sources.map((p) => (
+                    <div key={p.id} className="text-[13px] text-textItemBlur break-all">
+                      {p.name || p.externalId}:{' '}
+                      {p.status === 'no_access'
+                        ? t('source_no_access', 'Not shared')
+                        : p.status === 'error'
+                        ? p.error
+                        : p.status === 'syncing'
+                        ? t('source_syncing', 'Listing files...')
+                        : t('source_pending', 'Waiting')}
+                    </div>
+                  ))}
+                  <a href="/projects" className="text-[13px] text-[#612BD3] hover:underline">
+                    {t('drive_how_to_share', 'How to share a Drive folder')}
+                  </a>
+                </>
+              )}
+            </div>
+          )}
+          {data?.files?.map((file) => (
+            <DriveTile
+              key={file.id}
+              file={file}
+              selectable={pickable(file)}
+              selected={selected.findIndex((p) => p.id === file.id) + 1}
+              importing={importing.includes(file.id)}
+              onClick={toggle(file)}
+              onImport={
+                standalone
+                  ? async () => {
+                      if (await importFile(file)) {
+                        toaster.show(t('imported_to_library', 'Added to the media library'), 'success');
+                        mutate();
+                      }
+                    }
+                  : undefined
+              }
+            />
+          ))}
+        </div>
+      </div>
+      {(data?.pages || 0) > 1 && (
+        <Pagination current={page} totalPages={data!.pages} setPage={setPage} />
+      )}
+      {!standalone && (
+        <div className="flex justify-end mt-[32px] gap-[8px] mobile:mt-[16px]">
+          <button
+            onClick={() => modals.closeCurrent()}
+            className="cursor-pointer h-[52px] px-[20px] items-center justify-center border border-newTextColor/10 flex rounded-[10px] mobile:hidden"
+          >
+            {t('cancel', 'Cancel')}
+          </button>
+          <button
+            onClick={addSelected}
+            disabled={(!selected.length && !librarySelected.length) || adding}
+            className="cursor-pointer text-white disabled:opacity-80 disabled:cursor-not-allowed h-[52px] px-[20px] items-center justify-center bg-[#612BD3] flex rounded-[10px] mobile:h-[44px] mobile:flex-1"
+          >
+            {adding
+              ? t('importing', 'Importing...')
+              : t('add_selected_media', 'Add selected media')}
+            {!adding && selected.length + librarySelected.length > 0 && (
+              <span className="ms-[6px]">({selected.length + librarySelected.length})</span>
+            )}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const MediaBox: FC<{
   setMedia: (params: { id: string; path: string }[]) => void;
   standalone?: boolean;
@@ -232,6 +588,9 @@ export const MediaBox: FC<{
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebounce(search, 300);
   const [folder, setFolder] = useState<FolderSelection>('all');
+  const driveProjectId = folder.startsWith(PROJECT_SELECTION)
+    ? folder.slice(PROJECT_SELECTION.length)
+    : undefined;
   const fetch = useFetch();
   const modals = useModals();
   const toaster = useToaster();
@@ -266,7 +625,7 @@ export const MediaBox: FC<{
     return (await fetch(`/media?${params.toString()}`)).json();
   }, [page, debouncedSearch, folder]);
   const { data, mutate, isLoading } = useSWR(
-    `get-media-${page}-${debouncedSearch}-${folder}`,
+    driveProjectId ? null : `get-media-${page}-${debouncedSearch}-${folder}`,
     loadMedia
   );
   const mutateRef = useRef(mutate);
@@ -306,7 +665,12 @@ export const MediaBox: FC<{
         : 'image/*,video/mp4',
     onUploadSuccess: async (arr) => {
       const target = folderRef.current;
-      if (target !== 'all' && target !== 'root' && arr?.length) {
+      if (
+        target !== 'all' &&
+        target !== 'root' &&
+        !target.startsWith(PROJECT_SELECTION) &&
+        arr?.length
+      ) {
         await fetch('/media-folders/move', {
           method: 'PUT',
           body: JSON.stringify({
@@ -534,7 +898,12 @@ export const MediaBox: FC<{
   }, [t, loading]);
 
   return (
-    <DropFiles disabled={loading} className="flex flex-col flex-1" onDrop={dragAndDrop}>
+    <DropFiles
+      // the Drive of a project is read only
+      disabled={loading || !!driveProjectId}
+      className="flex flex-col flex-1"
+      onDrop={dragAndDrop}
+    >
       <div className="flex flex-1 gap-[16px]">
       <MediaFoldersSidebar
         selected={folder}
@@ -545,6 +914,16 @@ export const MediaBox: FC<{
         <div className="hidden mobile:block mb-[8px]">
           <MediaFoldersSelect selected={folder} onSelect={setFolder} />
         </div>
+        {driveProjectId ? (
+          <ProjectDriveFiles
+            projectId={driveProjectId}
+            standalone={standalone}
+            type={type}
+            librarySelected={selected}
+            onAdd={(media) => setMedia(media)}
+          />
+        ) : (
+        <>
         <div className="mb-[8px] text-[14px] font-[600] mobile:hidden">
           {folder === 'all'
             ? t('all_media', 'All media')
@@ -840,6 +1219,8 @@ export const MediaBox: FC<{
               </button>
             )}
           </div>
+        )}
+        </>
         )}
       </div>
       </div>

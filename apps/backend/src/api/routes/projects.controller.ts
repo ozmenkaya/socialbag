@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
 import { Organization } from '@prisma/client';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
@@ -23,6 +24,23 @@ export class ProjectsController {
   @Get('/drive')
   driveInfo() {
     return this._projectsService.driveInfo();
+  }
+
+  // the preview of a Drive file, for the tiles of the media library
+  @Get('/files/:fileId/thumbnail')
+  async fileThumbnail(
+    @GetOrgFromRequest() org: Organization,
+    @Param('fileId') fileId: string,
+    @Res() res: Response
+  ) {
+    const picture = await this._projectsService.getFileThumbnail(org.id, fileId);
+    if (!picture) {
+      res.status(404).send();
+      return;
+    }
+
+    res.set({ 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=21600' });
+    res.send(picture);
   }
 
   @Post('/files/:fileId/import')

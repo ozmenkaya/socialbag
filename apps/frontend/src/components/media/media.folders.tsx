@@ -9,6 +9,7 @@ import { useToaster } from '@gitroom/react/toaster/toaster';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Button } from '@gitroom/react/form/button';
+import { useProjects } from '@gitroom/frontend/components/projects/use.projects';
 
 export interface MediaFolderItem {
   id: string;
@@ -31,8 +32,11 @@ export interface MediaFolderItem {
   };
 }
 
-// 'all' lists every media, 'root' only media outside folders
+// 'all' lists every media, 'root' only media outside folders, 'project:<id>'
+// the files of a project's Drive folders
 export type FolderSelection = 'all' | 'root' | string;
+
+export const PROJECT_SELECTION = 'project:';
 
 export const useMediaFolders = () => {
   const fetch = useFetch();
@@ -591,11 +595,18 @@ export const MediaFoldersSidebar: FC<{
   const modals = useModals();
   const toaster = useToaster();
   const { data: folders, mutate } = useMediaFolders();
+  const { data: projects } = useProjects();
+  const driveProjects = (projects || []).filter((p) => p.sources.length);
   const [expanded, setExpanded] = useState<string[]>([]);
 
   // a folder opened from outside (e.g. the channel's folder) must be visible
   useEffect(() => {
-    if (!folders || selected === 'all' || selected === 'root') {
+    if (
+      !folders ||
+      selected === 'all' ||
+      selected === 'root' ||
+      selected.startsWith(PROJECT_SELECTION)
+    ) {
       return;
     }
     const parents: string[] = [];
@@ -778,6 +789,37 @@ export const MediaFoldersSidebar: FC<{
       >
         + {t('new_folder', 'New folder')}
       </div>
+      {!!driveProjects.length && (
+        <>
+          <div className="h-[1px] bg-newColColor my-[6px]" />
+          <div className="px-[8px] py-[4px] text-[12px] text-textItemBlur">
+            {t('drive_of_projects', 'Google Drive of the projects')}
+          </div>
+          {driveProjects.map((project) => (
+            <div
+              key={project.id}
+              className={clsx(
+                'flex items-center gap-[8px] h-[34px] px-[8px] rounded-[6px] cursor-pointer hover:bg-boxHover text-[14px]',
+                selected === `${PROJECT_SELECTION}${project.id}` && 'bg-boxHover'
+              )}
+              onClick={() => onSelect(`${PROJECT_SELECTION}${project.id}`)}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0">
+                <path
+                  d="M8 3h8l6 10-4 7H6l-4-7 6-10Z"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span className="flex-1 truncate">{project.name}</span>
+              <span className="text-[12px] text-textItemBlur">
+                {project.sources.reduce((all, p) => all + p.fileCount, 0)}
+              </span>
+            </div>
+          ))}
+        </>
+      )}
     </div>
   );
 };
@@ -789,6 +831,7 @@ export const MediaFoldersSelect: FC<{
 }> = ({ selected, onSelect }) => {
   const t = useT();
   const { data: folders } = useMediaFolders();
+  const { data: projects } = useProjects();
   const options = useMemo(
     () =>
       (folders || [])
@@ -810,6 +853,13 @@ export const MediaFoldersSelect: FC<{
           {p.path}
         </option>
       ))}
+      {(projects || [])
+        .filter((p) => p.sources.length)
+        .map((p) => (
+          <option key={p.id} value={`${PROJECT_SELECTION}${p.id}`}>
+            Drive · {p.name}
+          </option>
+        ))}
     </select>
   );
 };

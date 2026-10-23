@@ -15,48 +15,10 @@ import {
   useFolderIntegrationList,
   useMediaFolders,
 } from '@gitroom/frontend/components/media/media.folders';
-
-export interface ProjectItem {
-  id: string;
-  name: string;
-  description: string;
-  integrations: {
-    id: string;
-    name: string;
-    picture?: string;
-    providerIdentifier: string;
-  }[];
-  folders: { id: string; name: string }[];
-  sources: {
-    id: string;
-    type: string;
-    externalId: string;
-    url: string;
-    name: string | null;
-    status: 'pending' | 'syncing' | 'ready' | 'no_access' | 'error';
-    error: string | null;
-    fileCount: number;
-    sharedBy: string | null;
-    syncedAt: string | null;
-  }[];
-  // files found in the Drive folders, by kind
-  files: Record<string, number>;
-}
-
-const isSyncing = (projects?: ProjectItem[]) =>
-  !!projects?.some((p) => p.sources.some((s) => s.status === 'syncing'));
-
-export const useProjects = () => {
-  const fetch = useFetch();
-  const load = useCallback(async () => {
-    return (await fetch('/projects')).json();
-  }, [fetch]);
-
-  // follows the sync while a Drive folder is being listed
-  return useSWR<ProjectItem[]>('projects', load, {
-    refreshInterval: (data) => (isSyncing(data) ? 3000 : 0),
-  });
-};
+import {
+  ProjectItem,
+  useProjects,
+} from '@gitroom/frontend/components/projects/use.projects';
 
 const useDriveInfo = () => {
   const fetch = useFetch();
