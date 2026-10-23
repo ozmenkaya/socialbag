@@ -9,7 +9,10 @@ import {
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { RefreshToken } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { timer } from '@gitroom/helpers/utils/timer';
-import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
+import {
+  checkAuth,
+  assertIntegrationAllowed,
+} from '@gitroom/nestjs-libraries/chat/auth.context';
 import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
 
 @Injectable()
@@ -62,6 +65,8 @@ export class IntegrationTriggerTool implements AgentToolInterface {
         const organizationId = JSON.parse(
           (context?.requestContext as any)?.get('organization') as string
         ).id;
+
+        assertIntegrationAllowed(inputData.integrationId);
 
         const getIntegration =
           await this._integrationService.getIntegrationById(

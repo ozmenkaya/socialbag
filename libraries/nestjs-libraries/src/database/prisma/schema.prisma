@@ -37,6 +37,7 @@ model Organization {
   submittedPost       Post[]               @relation("submittedForOrg")
   sets                Sets[]
   signatures          Signatures[]
+  mcpAccessKeys       McpAccessKey[]
   subscription        Subscription?
   tags                Tags[]
   thirdParty          ThirdParty[]
@@ -579,6 +580,24 @@ model Signatures {
   organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@index([createdAt])
+  @@index([organizationId])
+  @@index([deletedAt])
+}
+
+model McpAccessKey {
+  id             String       @id @default(uuid())
+  organizationId String
+  name           String
+  keyHash        String       @unique
+  keyPreview     String
+  readOnly       Boolean      @default(true)
+  integrationIds String[]
+  lastUsedAt     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
   @@index([organizationId])
   @@index([deletedAt])
 }

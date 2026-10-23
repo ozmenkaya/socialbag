@@ -1052,5 +1052,21 @@
   "drive_folder_empty": "No files were found in the Drive folders",
   "drive_not_listed": "The Drive folders of this project are not listed yet",
   "imported_to_library": "Added to the media library",
-  "drive_how_to_share": "How to share a Drive folder"
+  "drive_how_to_share": "How to share a Drive folder",
+  "mcp_access_keys": "MCP access keys",
+  "mcp_access_keys_info": "Give an assistant such as Claude limited access: read only, and only the channels you choose. The main API key above always has full access.",
+  "mcp_key_add": "Add access key",
+  "mcp_key_create": "Create access key",
+  "mcp_key_created": "Access key created",
+  "mcp_key_created_info": "Copy this URL now, it is shown only once. Paste it in Claude as a custom connector URL.",
+  "mcp_key_name_required": "Give the key a name",
+  "mcp_key_channels_required": "Select at least one channel",
+  "mcp_key_create_failed": "The key could not be created",
+  "mcp_key_read_only": "Read only (cannot schedule, delete or upload anything)",
+  "mcp_key_all_channels": "Access to all channels",
+  "mcp_key_mode_read_only": "Read only",
+  "mcp_key_mode_full": "Read and write",
+  "mcp_key_last_used": "Last used {{date}}",
+  "mcp_key_never_used": "Never used",
+  "mcp_key_delete_confirm": "Anything connected with this key stops working. Delete it?"
 }

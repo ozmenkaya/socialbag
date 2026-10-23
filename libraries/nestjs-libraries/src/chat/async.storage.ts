@@ -2,11 +2,19 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import type { SelfHostedInstance } from '@gitroom/nestjs-libraries/chat/mcp.relay.service';
 
+// what an MCP access key is limited to, empty integrationIds means every channel
+export type McpScope = {
+  readOnly: boolean;
+  integrationIds: string[];
+};
+
 type Ctx = {
   requestId: string;
   auth: any; // replace with your org type if you have it, e.g. Organization
   // a self-hosted connection: where its tool calls are relayed to
   relay?: SelfHostedInstance & { id: string };
+  // set when the connection came in with an MCP access key
+  scope?: McpScope;
 };
 
 const als = new AsyncLocalStorage<Ctx>();
@@ -21,6 +29,10 @@ export function getContext(): Ctx | undefined {
 
 export function getAuth<T = any>(): T | undefined {
   return als.getStore()?.auth as T | undefined;
+}
+
+export function getScope(): McpScope | undefined {
+  return als.getStore()?.scope;
 }
 
 export function getRequestId(): string | undefined {

@@ -14,6 +14,10 @@ import { UPLOAD_WIDGET_URI, uploadWidgetHtml } from '@gitroom/nestjs-libraries/c
 import { CLIPPING_WIDGET_URI, clippingWidgetHtml } from '@gitroom/nestjs-libraries/chat/ui/clipping.widget';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { McpRelayService } from '@gitroom/nestjs-libraries/chat/mcp.relay.service';
+import {
+  MCP_ACCESS_KEY_PREFIX,
+  McpAccessService,
+} from '@gitroom/nestjs-libraries/database/prisma/mcp-access/mcp.access.service';
 const fixAcceptHeader = (req: Request) => {
   const value = 'application/json, text/event-stream';
   req.headers.accept = value;
@@ -53,6 +57,7 @@ export const startMcp = async (app: INestApplication) => {
   const oauthService = app.get(OAuthService, { strict: false });
   const loadToolsService = app.get(LoadToolsService, { strict: false });
   const mcpRelayService = app.get(McpRelayService, { strict: false });
+  const mcpAccessService = app.get(McpAccessService, { strict: false });
 
   const resolveAuth = async (token: string) => {
     if (token.startsWith('pos_')) {
@@ -61,6 +66,19 @@ export const startMcp = async (app: INestApplication) => {
       return authorization.organization;
     }
     return organizationService.getOrgByApiKey(token);
+  };
+
+  // pmk_ tokens are MCP access keys: an organization key that can be read-only
+  // and limited to some channels (the scope), the rest has full access
+  const resolveAccess = async (token: string) => {
+    if (token.startsWith(MCP_ACCESS_KEY_PREFIX)) {
+      const access = await mcpAccessService.resolveKey(token);
+      return access
+        ? { auth: access.organization, scope: access.scope }
+        : null;
+    }
+    const auth = await resolveAuth(token);
+    return auth ? { auth, scope: undefined } : null;
   };
 
   // psh_ tokens: a self-hosted Postiz this server relays to (McpRelayService)
@@ -257,7 +275,7 @@ export const startMcp = async (app: INestApplication) => {
         validateToken: async (token: string) => {
           const org = token.startsWith('psh_')
             ? await resolveSelfHosted(token)
-            : await resolveAuth(token);
+            : (await resolveAccess(token))?.auth;
           if (!org) {
             return { valid: false, error: 'invalid_token', errorDescription: 'Invalid API Key or OAuth token' };
           }
@@ -370,7 +388,8 @@ export const startMcp = async (app: INestApplication) => {
     // a self-hosted connection has no organization here
     const selfHosted = token!.startsWith('psh_');
     const relay = selfHosted ? await resolveSelfHosted(token!) : undefined;
-    const auth = selfHosted ? undefined : await resolveAuth(token!);
+    const access = selfHosted ? undefined : await resolveAccess(token!);
+    const auth = access?.auth;
     if (!auth && !(relay && selfHostedServer)) {
       res.status(401).json({ error: 'invalid_token', error_description: 'Could not resolve organization' });
       return;
@@ -378,7 +397,7 @@ export const startMcp = async (app: INestApplication) => {
 
     endListenStream(req, res);
     fixAcceptHeader(req);
-    await runWithContext({ requestId: token!, auth, relay: relay || undefined }, async () => {
+    await runWithContext({ requestId: token!, auth, scope: access?.scope, relay: relay || undefined }, async () => {
       await (relay ? selfHostedServer! : mcpServer).startHTTP({
         url: url,
         httpPath: url.pathname,
@@ -415,10 +434,8 @@ export const startMcp = async (app: INestApplication) => {
       return;
     }
 
-    // @ts-ignore
-    req.auth = await resolveAuth(token);
-    // @ts-ignore
-    if (!req.auth) {
+    const access = await resolveAccess(token);
+    if (!access) {
       res.status(401).send('Invalid API Key or OAuth token');
       return;
     }
@@ -428,7 +445,7 @@ export const startMcp = async (app: INestApplication) => {
     endListenStream(req, res);
     fixAcceptHeader(req);
     // @ts-ignore
-    await runWithContext({ requestId: token, auth: req.auth }, async () => {
+    await runWithContext({ requestId: token, auth: access.auth, scope: access.scope }, async () => {
       await server.startHTTP({
         url,
         httpPath: url.pathname,
@@ -453,10 +470,8 @@ export const startMcp = async (app: INestApplication) => {
       return;
     }
 
-    // @ts-ignore
-    req.auth = await organizationService.getOrgByApiKey(req.params.id);
-    // @ts-ignore
-    if (!req.auth) {
+    const access = await resolveAccess(req.params.id as string);
+    if (!access) {
       res.status(400).send('Invalid API Key');
       return;
     }
@@ -469,8 +484,7 @@ export const startMcp = async (app: INestApplication) => {
     endListenStream(req, res);
     fixAcceptHeader(req);
     await runWithContext(
-      // @ts-ignore
-      { requestId: req.params.id, auth: req.auth },
+      { requestId: req.params.id as string, auth: access.auth, scope: access.scope },
       async () => {
         await server.startHTTP({
           url,
@@ -497,10 +511,8 @@ export const startMcp = async (app: INestApplication) => {
       return;
     }
 
-    // @ts-ignore
-    req.auth = await organizationService.getOrgByApiKey(req.params.id);
-    // @ts-ignore
-    if (!req.auth) {
+    const access = await resolveAccess(req.params.id as string);
+    if (!access) {
       res.status(400).send('Invalid API Key');
       return;
     }
@@ -508,8 +520,7 @@ export const startMcp = async (app: INestApplication) => {
     const url = new URL(req.originalUrl, process.env.NEXT_PUBLIC_BACKEND_URL);
 
     await runWithContext(
-      // @ts-ignore
-      { requestId: req.params.id, auth: req.auth },
+      { requestId: req.params.id as string, auth: access.auth, scope: access.scope },
       async () => {
         await new MCPServer(serverConfig).startSSE({
           url,

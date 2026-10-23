@@ -7,7 +7,10 @@ import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/po
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { AllProvidersSettings } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/all.providers.settings';
 import { Integration } from '@prisma/client';
-import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
+import {
+  checkAuth,
+  isIntegrationAllowed,
+} from '@gitroom/nestjs-libraries/chat/auth.context';
 import {
   ValidUrlExtension,
   ValidUrlPath,
@@ -176,6 +179,18 @@ If validation fails, the result contains output.errors describing what to fix; t
           (context?.requestContext as any)?.get('organization') as string
         ).id;
         const finalOutput = [];
+
+        if (
+          inputData.socialPost.some(
+            (platform: any) => !isIntegrationAllowed(platform.integrationId)
+          )
+        ) {
+          return {
+            output: {
+              errors: 'This access key has no access to this channel',
+            },
+          };
+        }
 
         const integrations = {} as Record<string, Integration>;
         for (const platform of inputData.socialPost) {

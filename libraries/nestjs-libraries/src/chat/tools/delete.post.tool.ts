@@ -3,7 +3,10 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { Injectable } from '@nestjs/common';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
-import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
+import {
+  checkAuth,
+  isIntegrationAllowed,
+} from '@gitroom/nestjs-libraries/chat/auth.context';
 
 @Injectable()
 export class DeletePostTool implements AgentToolInterface {
@@ -57,6 +60,14 @@ If the post cannot be deleted, the result contains output.errors explaining why.
 
         if (!post) {
           return { output: { errors: 'Post not found' } };
+        }
+
+        if (!isIntegrationAllowed(post.integrationId)) {
+          return {
+            output: {
+              errors: 'This access key has no access to this channel',
+            },
+          };
         }
 
         // deleting goes by group, which a comment shares with its whole thread

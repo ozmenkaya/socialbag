@@ -11,6 +11,7 @@ import { toolList } from '@gitroom/nestjs-libraries/chat/tools/tool.list';
 import { AgentToolInterface } from '@gitroom/nestjs-libraries/chat/agent.tool.interface';
 import dayjs from 'dayjs';
 import { OPENROUTER_DEFAULT_MODEL } from '@gitroom/nestjs-libraries/3rdparties/openrouter/openrouter.provider';
+import { getScope } from '@gitroom/nestjs-libraries/chat/async.storage';
 import { ThirdPartyService } from '@gitroom/nestjs-libraries/database/prisma/third-party/third-party.service';
 
 export const AgentState = object({
@@ -56,6 +57,23 @@ export class LoadToolsService {
     return openai ? createOpenAI({ apiKey: openai })('gpt-5.2') : undefined;
   }
 
+  // A connection made with an MCP access key can be read-only: every tool that
+  // is not marked readOnlyHint is refused for it
+  private limitToScope(name: string, tool: any) {
+    const execute = tool.execute;
+    if (!execute) {
+      return tool;
+    }
+
+    tool.execute = async (...args: any[]) => {
+      if (getScope()?.readOnly && !tool.mcp?.annotations?.readOnlyHint) {
+        throw new Error(`This access key is read-only, ${name} is not allowed`);
+      }
+      return execute.apply(tool, args);
+    };
+    return tool;
+  }
+
   async loadTools(mcpOnly = false) {
     return (
       await Promise.all<{ name: string; tool: any }>(
@@ -68,7 +86,7 @@ export class LoadToolsService {
           .filter((p) => !p.available || p.available())
           .map(async (p) => ({
             name: p.name as string,
-            tool: await p.run(),
+            tool: this.limitToScope(p.name, await p.run()),
           }))
       )
     ).reduce(

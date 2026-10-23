@@ -23,6 +23,7 @@ import { LogoutComponent } from '@gitroom/frontend/components/layout/logout.comp
 import { useSearchParams } from 'next/navigation';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { PublicComponent } from '@gitroom/frontend/components/public-api/public.component';
+import { McpAccessKeysComponent } from '@gitroom/frontend/components/settings/mcp.access.keys.component';
 import Link from 'next/link';
 import { Webhooks } from '@gitroom/frontend/components/webhooks/webhooks';
 import { Sets } from '@gitroom/frontend/components/sets/sets';
@@ -235,6 +236,7 @@ export const SettingsPopup: FC<{
                 showLogout && (
                   <div>
                     <PublicComponent />
+                    {user?.role !== 'USER' && <McpAccessKeysComponent />}
                   </div>
                 )}
 

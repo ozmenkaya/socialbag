@@ -3,7 +3,10 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { Injectable } from '@nestjs/common';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
-import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
+import {
+  checkAuth,
+  isIntegrationAllowed,
+} from '@gitroom/nestjs-libraries/chat/auth.context';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 
@@ -93,7 +96,9 @@ Each item has an "id", its publish date, state, error (for errored posts), conte
 
         return {
           output: {
-            posts: (posts || []).map((p: any) => ({
+            posts: (posts || [])
+              .filter((p: any) => isIntegrationAllowed(p.integration?.id))
+              .map((p: any) => ({
               id: p.id,
               publishDate: dayjs(p.publishDate)
                 .utc()

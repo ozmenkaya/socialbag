@@ -1,4 +1,4 @@
-import { getAuth } from '@gitroom/nestjs-libraries/chat/async.storage';
+import { getAuth, getScope } from '@gitroom/nestjs-libraries/chat/async.storage';
 
 export const checkAuth = (
   inputData: any,
@@ -12,5 +12,17 @@ export const checkAuth = (
       JSON.stringify(authInfo)
     );
     (context.requestContext as any).set('ui', 'false');
+  }
+};
+
+// A connection with an MCP access key can be limited to some channels
+export const isIntegrationAllowed = (integrationId?: string | null) => {
+  const ids = getScope()?.integrationIds;
+  return !ids?.length || (!!integrationId && ids.includes(integrationId));
+};
+
+export const assertIntegrationAllowed = (integrationId?: string | null) => {
+  if (!isIntegrationAllowed(integrationId)) {
+    throw new Error('This access key has no access to this channel');
   }
 };

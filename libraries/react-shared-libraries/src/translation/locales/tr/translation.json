@@ -1050,5 +1050,21 @@
   "drive_folder_empty": "Drive klasörlerinde dosya bulunamadı",
   "drive_not_listed": "Bu projenin Drive klasörleri henüz listelenmedi",
   "imported_to_library": "Medya kütüphanesine eklendi",
-  "drive_how_to_share": "Drive klasörü nasıl paylaşılır?"
+  "drive_how_to_share": "Drive klasörü nasıl paylaşılır?",
+  "mcp_access_keys": "MCP erişim anahtarları",
+  "mcp_access_keys_info": "Claude gibi bir asistana sınırlı erişim ver: salt okunur ve yalnızca seçtiğin kanallar. Yukarıdaki ana API anahtarı her zaman tam erişimlidir.",
+  "mcp_key_add": "Erişim anahtarı ekle",
+  "mcp_key_create": "Erişim anahtarı oluştur",
+  "mcp_key_created": "Erişim anahtarı oluşturuldu",
+  "mcp_key_created_info": "Bu adresi şimdi kopyala, yalnızca bir kez gösterilir. Claude'a özel connector adresi olarak yapıştır.",
+  "mcp_key_name_required": "Anahtara bir ad ver",
+  "mcp_key_channels_required": "En az bir kanal seç",
+  "mcp_key_create_failed": "Anahtar oluşturulamadı",
+  "mcp_key_read_only": "Salt okunur (planlama, silme veya yükleme yapamaz)",
+  "mcp_key_all_channels": "Tüm kanallara erişim",
+  "mcp_key_mode_read_only": "Salt okunur",
+  "mcp_key_mode_full": "Okuma ve yazma",
+  "mcp_key_last_used": "Son kullanım {{date}}",
+  "mcp_key_never_used": "Hiç kullanılmadı",
+  "mcp_key_delete_confirm": "Bu anahtarla bağlanan her şey çalışmayı bırakır. Silinsin mi?"
 }

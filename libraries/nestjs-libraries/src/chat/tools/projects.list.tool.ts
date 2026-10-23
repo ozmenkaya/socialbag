@@ -3,7 +3,10 @@ import { createTool } from '@mastra/core/tools';
 import { Injectable } from '@nestjs/common';
 import { ProjectsService } from '@gitroom/nestjs-libraries/database/prisma/projects/projects.service';
 import z from 'zod';
-import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
+import {
+  checkAuth,
+  isIntegrationAllowed,
+} from '@gitroom/nestjs-libraries/chat/auth.context';
 
 @Injectable()
 export class ProjectsListTool implements AgentToolInterface {
@@ -60,7 +63,9 @@ When the user talks about a project, use its channels and its folders (mediaList
             id: p.id,
             name: p.name,
             description: p.description,
-            channels: p.integrations.map((i) => ({
+            channels: p.integrations
+              .filter((i) => isIntegrationAllowed(i.id))
+              .map((i) => ({
               id: i.id,
               name: i.name,
               platform: i.providerIdentifier,

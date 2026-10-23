@@ -3,7 +3,10 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { Injectable } from '@nestjs/common';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
-import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
+import {
+  checkAuth,
+  isIntegrationAllowed,
+} from '@gitroom/nestjs-libraries/chat/auth.context';
 
 @Injectable()
 export class PostSettingsTool implements AgentToolInterface {
@@ -62,6 +65,20 @@ If validation fails, the result contains output.errors describing what to fix; t
         const organizationId = JSON.parse(
           (context?.requestContext as any)?.get('organization') as string
         ).id;
+
+        const [post] = await this._postsService.getPostsRecursively(
+          inputData.id,
+          false,
+          organizationId,
+          true
+        );
+        if (post && !isIntegrationAllowed(post.integrationId)) {
+          return {
+            output: {
+              errors: 'This access key has no access to this channel',
+            },
+          };
+        }
 
         const settings = (inputData.settings || []).reduce(
           (acc: Record<string, any>, s: { key: string; value: any }) => ({
