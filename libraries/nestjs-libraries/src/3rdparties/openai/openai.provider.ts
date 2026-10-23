@@ -11,6 +11,8 @@ import {
   description:
     'Runs the agent with GPT, when OpenRouter or Claude is not connected.',
   fields: [],
+  // an API key can't read the balance
+  balance: { url: 'https://platform.openai.com/settings/organization/billing/overview' },
 })
 export class OpenaiProvider extends ThirdPartyAbstract {
   async checkConnection(

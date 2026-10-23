@@ -105,6 +105,86 @@ const useThirdPartyChoices = (id: string, func: string) => {
   });
 };
 
+const useThirdPartyBalance = (id: string, func: string) => {
+  const fetch = useFetch();
+  const load = useCallback(async () => {
+    return (
+      await fetch(`/third-party/function/${id}/${func}`, { method: 'POST', body: '{}' })
+    ).json();
+  }, [id, func]);
+
+  return useSWR<false | { amount: number; unit: 'usd' | 'credits' }>(
+    `third-party-balance-${id}`,
+    load,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+    }
+  );
+};
+
+const ThirdPartyBalanceLink: FC<{ url: string }> = ({ url }) => {
+  const t = useT();
+
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="underline">
+      {t('see_on_platform', 'See on the platform')}
+    </a>
+  );
+};
+
+const ThirdPartyBalanceAmount: FC<{ id: string; func: string; url?: string }> = ({
+  id,
+  func,
+  url,
+}) => {
+  const t = useT();
+  const { data, isLoading, error } = useThirdPartyBalance(id, func);
+
+  if (isLoading) {
+    return <>...</>;
+  }
+
+  if (error || !data || typeof data.amount !== 'number') {
+    return url ? (
+      <ThirdPartyBalanceLink url={url} />
+    ) : (
+      <>{t('balance_unavailable', 'unavailable')}</>
+    );
+  }
+
+  return (
+    <>
+      {data.unit === 'usd'
+        ? `$${data.amount.toFixed(2)}`
+        : `${Math.floor(data.amount).toLocaleString()} ${t('credits', 'credits')}`}
+    </>
+  );
+};
+
+// what is left on the account: read from the platform, or a link to its
+// billing page when it doesn't tell
+export const ThirdPartyBalanceComponent: FC<{
+  tParty: { id: string; balance: { function?: string; url?: string } };
+}> = ({ tParty }) => {
+  const t = useT();
+
+  return (
+    <div className="flex items-center gap-[8px] text-[13px] whitespace-nowrap">
+      <div className="text-textItemBlur">{t('balance', 'Balance')}</div>
+      {tParty.balance.function ? (
+        <ThirdPartyBalanceAmount
+          id={tParty.id}
+          func={tParty.balance.function}
+          url={tParty.balance.url}
+        />
+      ) : (
+        !!tParty.balance.url && <ThirdPartyBalanceLink url={tParty.balance.url} />
+      )}
+    </div>
+  );
+};
+
 // the option picked after connecting, for example the model of the agent
 export const ThirdPartyChoiceComponent: FC<{
   tParty: {
@@ -223,6 +303,7 @@ export const ThirdPartyComponent = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-[12px]">
+                    {!!p.balance && <ThirdPartyBalanceComponent tParty={p} />}
                     {!!p.choice && (
                       <ThirdPartyChoiceComponent tParty={p} reload={mutate} />
                     )}

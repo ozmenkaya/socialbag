@@ -1,6 +1,7 @@
 import {
   ThirdParty,
   ThirdPartyAbstract,
+  ThirdPartyBalance,
 } from '@gitroom/nestjs-libraries/3rdparties/thirdparty.interface';
 import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
 import { timer } from '@gitroom/helpers/utils/timer';
@@ -11,6 +12,7 @@ import { timer } from '@gitroom/helpers/utils/timer';
   description: 'HeyGen is a platform for creating AI-generated avatars videos.',
   position: 'media',
   fields: [],
+  balance: { function: 'balance' },
 })
 export class HeygenProvider extends ThirdPartyAbstract<{
   voice: string;
@@ -45,6 +47,24 @@ export class HeygenProvider extends ThirdPartyAbstract<{
       username: data.username,
       id: data.username,
     };
+  }
+
+  // the quota is counted in seconds, 60 of them make a credit
+  async balance(apiKey: string): Promise<ThirdPartyBalance> {
+    const quota = await fetch('https://api.heygen.com/v2/user/remaining_quota', {
+      headers: {
+        accept: 'application/json',
+        'x-api-key': apiKey,
+      },
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!quota.ok) {
+      return false;
+    }
+
+    const { data } = await quota.json();
+    return { amount: data.remaining_quota / 60, unit: 'credits' };
   }
 
   async generateVoice(apiKey: string, data: { text: string }) {

@@ -1,6 +1,7 @@
 import {
   ThirdParty,
   ThirdPartyAbstract,
+  ThirdPartyBalance,
 } from '@gitroom/nestjs-libraries/3rdparties/thirdparty.interface';
 import { LumaService } from '@gitroom/nestjs-libraries/openai/luma.service';
 
@@ -12,6 +13,7 @@ import { LumaService } from '@gitroom/nestjs-libraries/openai/luma.service';
   description:
     'Luma AI generates the images and videos of the AI design tools, using the media library as reference.',
   fields: [],
+  balance: { function: 'balance' },
 })
 export class LumaProvider extends ThirdPartyAbstract {
   // @ts-ignore
@@ -28,6 +30,11 @@ export class LumaProvider extends ThirdPartyAbstract {
 
     // one Luma connection per organization: connecting again replaces the key
     return { name: 'Luma AI', username: 'luma', id: 'luma' };
+  }
+
+  async balance(apiKey: string): Promise<ThirdPartyBalance> {
+    const credits = await this._lumaService.getCredits(apiKey);
+    return credits === false ? false : { amount: credits, unit: 'credits' };
   }
 
   async sendData(): Promise<string> {

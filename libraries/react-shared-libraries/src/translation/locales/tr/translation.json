@@ -1066,5 +1066,9 @@
   "mcp_key_mode_full": "Okuma ve yazma",
   "mcp_key_last_used": "Son kullanım {{date}}",
   "mcp_key_never_used": "Hiç kullanılmadı",
-  "mcp_key_delete_confirm": "Bu anahtarla bağlanan her şey çalışmayı bırakır. Silinsin mi?"
+  "mcp_key_delete_confirm": "Bu anahtarla bağlanan her şey çalışmayı bırakır. Silinsin mi?",
+  "balance": "Bakiye",
+  "credits": "kredi",
+  "balance_unavailable": "alınamadı",
+  "see_on_platform": "Platformda gör"
 }

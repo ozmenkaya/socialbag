@@ -41,7 +41,7 @@ export class ThirdPartyController {
           organization.id
         )
       ).map(({ settings, ...thirdParty }) => {
-        const { description, fields, position, title, choice } =
+        const { description, fields, position, title, choice, balance } =
           this._thirdPartyManager.getThirdPartyByName(thirdParty.identifier);
         return {
           ...thirdParty,
@@ -50,6 +50,7 @@ export class ThirdPartyController {
           fields,
           description,
           choice,
+          balance,
           chosen: choice
             ? JSON.parse(settings || '{}').choice || choice.default
             : undefined,

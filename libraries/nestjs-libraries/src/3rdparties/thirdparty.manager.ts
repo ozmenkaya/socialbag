@@ -22,6 +22,7 @@ export class ThirdPartyManager {
         description: p.description,
         fields: p.fields || [],
         choice: p.choice,
+        balance: p.balance,
         installUrl: p.installUrl?.(),
       }));
   }

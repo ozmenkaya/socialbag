@@ -10,6 +10,8 @@ import {
   title: 'Claude (Agent)',
   description: 'Runs the agent with Claude Opus, when OpenRouter is not connected.',
   fields: [],
+  // an API key can't read the balance
+  balance: { url: 'https://console.anthropic.com/settings/billing' },
 })
 export class AnthropicProvider extends ThirdPartyAbstract {
   async checkConnection(

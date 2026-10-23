@@ -1068,5 +1068,9 @@
   "mcp_key_mode_full": "Read and write",
   "mcp_key_last_used": "Last used {{date}}",
   "mcp_key_never_used": "Never used",
-  "mcp_key_delete_confirm": "Anything connected with this key stops working. Delete it?"
+  "mcp_key_delete_confirm": "Anything connected with this key stops working. Delete it?",
+  "balance": "Balance",
+  "credits": "credits",
+  "balance_unavailable": "unavailable",
+  "see_on_platform": "See on the platform"
 }
