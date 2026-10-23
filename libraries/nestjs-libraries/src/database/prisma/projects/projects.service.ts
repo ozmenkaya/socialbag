@@ -1,8 +1,14 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Readable } from 'stream';
 import sharp from 'sharp';
-import { ProjectsRepository } from '@gitroom/nestjs-libraries/database/prisma/projects/projects.repository';
-import { ProjectDto } from '@gitroom/nestjs-libraries/dtos/projects/project.dto';
+import {
+  ProjectBrand,
+  ProjectsRepository,
+} from '@gitroom/nestjs-libraries/database/prisma/projects/projects.repository';
+import {
+  ProjectBrandDto,
+  ProjectDto,
+} from '@gitroom/nestjs-libraries/dtos/projects/project.dto';
 import {
   DriveEntry,
   GoogleDriveService,
@@ -91,6 +97,7 @@ export class ProjectsService {
       id: project.id,
       name: project.name,
       description: project.description,
+      brand: (project.brand || {}) as ProjectBrand,
       integrations: project.integrations.map((p) => p.integration),
       folders: project.folders,
       sources: project.sources.map(({ syncStartedAt, ...source }) =>
@@ -432,6 +439,31 @@ export class ProjectsService {
     }
   }
 
+  // the brand the template designs of the project are made with
+  async getBrand(org: string, id: string) {
+    const project = await this._projectsRepository.getBrand(org, id);
+    if (!project) {
+      throw new BadRequestException('Project not found');
+    }
+
+    return (project.brand || {}) as ProjectBrand;
+  }
+
+  // a logo deleted from the library since is dropped, the project still saves
+  private async validateBrand(org: string, brand: ProjectBrandDto): Promise<ProjectBrand> {
+    const [logo] = brand.logoId
+      ? await this._mediaService.getMediaByIds(org, [brand.logoId])
+      : [];
+
+    return {
+      ...(logo ? { logoId: logo.id, logoPath: logo.path } : {}),
+      ...(brand.primary ? { primary: brand.primary.toUpperCase() } : {}),
+      ...(brand.accent ? { accent: brand.accent.toUpperCase() } : {}),
+      ...(brand.font ? { font: brand.font } : {}),
+      ...(brand.contact?.trim() ? { contact: brand.contact.trim() } : {}),
+    };
+  }
+
   private async findProject(org: string, id: string) {
     if (!(await this._projectsRepository.getProject(org, id))) {
       throw new BadRequestException('Project not found');
@@ -472,6 +504,7 @@ export class ProjectsService {
     return {
       name,
       description: (body.description || '').trim(),
+      brand: body.brand ? await this.validateBrand(org, body.brand) : undefined,
       integrations,
       folders,
       sources: drive.map((externalId) => ({

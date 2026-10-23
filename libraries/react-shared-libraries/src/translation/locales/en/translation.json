@@ -1072,5 +1072,14 @@
   "balance": "Balance",
   "credits": "credits",
   "balance_unavailable": "unavailable",
-  "see_on_platform": "See on the platform"
+  "see_on_platform": "See on the platform",
+  "project_brand": "Brand of the designs",
+  "project_brand_hint": "The template designs of this project put its logo, colors and contact line over the real photos.",
+  "choose_logo": "Choose logo",
+  "logo_hint": "A PNG with a transparent background fits best.",
+  "brand_primary": "Main color",
+  "brand_accent": "Accent color",
+  "font_modern": "Modern (Montserrat)",
+  "font_elegant": "Elegant (Playfair Display)",
+  "brand_contact_placeholder": "Contact line: phone · website"
 }

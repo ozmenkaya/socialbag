@@ -28,6 +28,7 @@ import { ProjectFileImportTool } from '@gitroom/nestjs-libraries/chat/tools/proj
 import { MediaFolderCreateTool } from '@gitroom/nestjs-libraries/chat/tools/media.folder.create.tool';
 import { MediaMoveTool } from '@gitroom/nestjs-libraries/chat/tools/media.move.tool';
 import { MediaViewTool } from '@gitroom/nestjs-libraries/chat/tools/media.view.tool';
+import { DesignTemplateTool } from '@gitroom/nestjs-libraries/chat/tools/design.template.tool';
 import { DesignVideoTool } from '@gitroom/nestjs-libraries/chat/tools/design.video.tool';
 import { DesignVideoStatusTool } from '@gitroom/nestjs-libraries/chat/tools/design.video.status.tool';
 
@@ -48,6 +49,7 @@ export const toolList = [
   ClippingStatusTool,
   ClippingWidgetTicketTool,
   GenerateImageTool,
+  DesignTemplateTool,
   UploadFromUrlTool,
   MediaListTool,
   MediaViewTool,

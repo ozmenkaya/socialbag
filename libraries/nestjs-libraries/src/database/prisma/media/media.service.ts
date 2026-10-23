@@ -541,10 +541,7 @@ export class MediaService {
   }
 
   // videos are read through their thumbnail, there is no frame to look at otherwise
-  private async loadPicture(
-    media: { path: string; thumbnail?: string | null },
-    maxSize: number
-  ) {
+  private async fetchPicture(media: { path: string; thumbnail?: string | null }) {
     const url = hasExtension(media.path, 'mp4') ? media.thumbnail : media.path;
     if (!url) {
       return undefined;
@@ -555,11 +552,41 @@ export class MediaService {
       throw new BadRequestException('Could not read the media file');
     }
 
-    return sharp(Buffer.from(await response.arrayBuffer()))
+    return Buffer.from(await response.arrayBuffer());
+  }
+
+  private async loadPicture(
+    media: { path: string; thumbnail?: string | null },
+    maxSize: number
+  ) {
+    const picture = await this.fetchPicture(media);
+    if (!picture) {
+      return undefined;
+    }
+
+    return sharp(picture)
       .rotate()
       .resize(maxSize, maxSize, { fit: 'inside', withoutEnlargement: true })
       .jpeg({ quality: 82 })
       .toBuffer();
+  }
+
+  // the pictures as they are (transparency kept), in the order of the ids
+  async getMediaPictures(org: string, ids: string[]) {
+    const found = await this._mediaRepository.getMediaByIds(org, ids);
+    if (found.length !== new Set(ids).size) {
+      throw new BadRequestException('Media not found');
+    }
+
+    return Promise.all(
+      ids.map(async (id) => {
+        const picture = await this.fetchPicture(found.find((p) => p.id === id)!);
+        if (!picture) {
+          throw new BadRequestException('This video has no thumbnail to use');
+        }
+        return picture;
+      })
+    );
   }
 
   async getMediaPreview(org: string, id: string) {

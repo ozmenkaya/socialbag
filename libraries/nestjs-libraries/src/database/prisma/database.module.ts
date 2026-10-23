@@ -60,6 +60,7 @@ import { MediaAutoPostService } from '@gitroom/nestjs-libraries/database/prisma/
 import { ProjectsRepository } from '@gitroom/nestjs-libraries/database/prisma/projects/projects.repository';
 import { ProjectsService } from '@gitroom/nestjs-libraries/database/prisma/projects/projects.service';
 import { GoogleDriveService } from '@gitroom/nestjs-libraries/google-drive/google.drive.service';
+import { DesignTemplatesService } from '@gitroom/nestjs-libraries/design-templates/design.templates.service';
 
 @Global()
 @Module({
@@ -129,6 +130,7 @@ import { GoogleDriveService } from '@gitroom/nestjs-libraries/google-drive/googl
     ProjectsRepository,
     ProjectsService,
     GoogleDriveService,
+    DesignTemplatesService,
   ],
   get exports() {
     return this.providers;

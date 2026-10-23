@@ -1070,5 +1070,14 @@
   "balance": "Bakiye",
   "credits": "kredi",
   "balance_unavailable": "alınamadı",
-  "see_on_platform": "Platformda gör"
+  "see_on_platform": "Platformda gör",
+  "project_brand": "Tasarımların markası",
+  "project_brand_hint": "Bu projenin şablon tasarımları, logosunu, renklerini ve iletişim satırını gerçek fotoğrafların üzerine yerleştirir.",
+  "choose_logo": "Logo seç",
+  "logo_hint": "Arka planı şeffaf bir PNG en iyi sonucu verir.",
+  "brand_primary": "Ana renk",
+  "brand_accent": "Vurgu rengi",
+  "font_modern": "Modern (Montserrat)",
+  "font_elegant": "Zarif (Playfair Display)",
+  "brand_contact_placeholder": "İletişim satırı: telefon · web sitesi"
 }

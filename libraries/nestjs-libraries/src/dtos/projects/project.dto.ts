@@ -8,9 +8,37 @@ import {
   IsOptional,
   IsString,
   Length,
+  Matches,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
+
+// what the template designs of the project are made of
+export class ProjectBrandDto {
+  // media of the library, a png with a transparent background fits best
+  @IsOptional()
+  @IsString()
+  logoId?: string;
+
+  @IsOptional()
+  @Matches(/^#[0-9a-fA-F]{6}$/)
+  primary?: string;
+
+  @IsOptional()
+  @Matches(/^#[0-9a-fA-F]{6}$/)
+  accent?: string;
+
+  @IsOptional()
+  @IsIn(['modern', 'elegant'])
+  font?: 'modern' | 'elegant';
+
+  // phone, website... shown at the bottom of the designs
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  contact?: string;
+}
 
 // The whole project at once: the lists replace what was linked before
 export class ProjectDto {
@@ -40,6 +68,12 @@ export class ProjectDto {
   @IsString({ each: true })
   @MaxLength(500, { each: true })
   driveFolders: string[];
+
+  // left as it was when not sent
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ProjectBrandDto)
+  brand?: ProjectBrandDto;
 }
 
 export class ProjectFilesQueryDto {

@@ -6,12 +6,24 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 
+export interface ProjectBrand {
+  logoId?: string;
+  // shown on the Projects page, the designs read the media again
+  logoPath?: string;
+  primary?: string;
+  accent?: string;
+  font?: 'modern' | 'elegant';
+  contact?: string;
+}
+
 export interface ProjectData {
   name: string;
   description: string;
   integrations: string[];
   folders: string[];
   sources: { type: string; externalId: string; url: string }[];
+  // undefined leaves it as it was
+  brand?: ProjectBrand;
 }
 
 @Injectable()
@@ -39,6 +51,7 @@ export class ProjectsRepository {
         id: true,
         name: true,
         description: true,
+        brand: true,
         integrations: {
           where: {
             integration: {
@@ -103,6 +116,21 @@ export class ProjectsRepository {
     });
   }
 
+  getBrand(org: string, id: string) {
+    return this._project.model.project.findFirst({
+      where: {
+        id,
+        organizationId: org,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        name: true,
+        brand: true,
+      },
+    });
+  }
+
   countIntegrations(org: string, ids: string[]) {
     return this._integration.model.integration.count({
       where: {
@@ -133,6 +161,7 @@ export class ProjectsRepository {
           organizationId: org,
           name: data.name,
           description: data.description,
+          ...(data.brand ? { brand: data.brand as Prisma.InputJsonObject } : {}),
         },
         select: {
           id: true,
@@ -154,6 +183,7 @@ export class ProjectsRepository {
         data: {
           name: data.name,
           description: data.description,
+          ...(data.brand ? { brand: data.brand as Prisma.InputJsonObject } : {}),
         },
         select: {
           id: true,

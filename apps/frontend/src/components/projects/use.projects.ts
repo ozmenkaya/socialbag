@@ -8,6 +8,15 @@ export interface ProjectItem {
   id: string;
   name: string;
   description: string;
+  // what the template designs of the project are made with
+  brand: {
+    logoId?: string;
+    logoPath?: string;
+    primary?: string;
+    accent?: string;
+    font?: 'modern' | 'elegant';
+    contact?: string;
+  };
   integrations: {
     id: string;
     name: string;

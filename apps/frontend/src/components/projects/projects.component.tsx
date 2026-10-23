@@ -19,6 +19,11 @@ import {
   ProjectItem,
   useProjects,
 } from '@gitroom/frontend/components/projects/use.projects';
+import { showMediaBox } from '@gitroom/frontend/components/media/media.component';
+
+// the colors of the template designs when the project has none
+const DEFAULT_PRIMARY = '#1F2A44';
+const DEFAULT_ACCENT = '#C9A227';
 
 const useDriveInfo = () => {
   const fetch = useFetch();
@@ -87,7 +92,23 @@ const ProjectModal: FC<{
   const [drive, setDrive] = useState(
     (project?.sources || []).map((p) => p.url).join('\n')
   );
+  const [logo, setLogo] = useState<{ id: string; path: string } | undefined>(
+    project?.brand.logoId && project.brand.logoPath
+      ? { id: project.brand.logoId, path: project.brand.logoPath }
+      : undefined
+  );
+  // the defaults are only shown, a color is saved once it is picked
+  const [primary, setPrimary] = useState(project?.brand.primary || '');
+  const [accent, setAccent] = useState(project?.brand.accent || '');
+  const [font, setFont] = useState(project?.brand.font || '');
+  const [contact, setContact] = useState(project?.brand.contact || '');
   const [saving, setSaving] = useState(false);
+
+  const chooseLogo = useCallback(() => {
+    showMediaBox((media) => {
+      setLogo({ id: media.id, path: media.path });
+    });
+  }, []);
 
   const toggle = useCallback(
     (set: React.Dispatch<React.SetStateAction<string[]>>, id: string) => () => {
@@ -114,6 +135,13 @@ const ProjectModal: FC<{
           .split('\n')
           .map((p) => p.trim())
           .filter((p) => p),
+        brand: {
+          ...(logo ? { logoId: logo.id } : {}),
+          ...(primary ? { primary } : {}),
+          ...(accent ? { accent } : {}),
+          ...(font ? { font } : {}),
+          contact,
+        },
       }),
     });
     setSaving(false);
@@ -126,7 +154,7 @@ const ProjectModal: FC<{
     }
     onSaved();
     modals.closeCurrent();
-  }, [fetch, project, name, description, channels, selectedFolders, drive, onSaved, modals, toaster, t]);
+  }, [fetch, project, name, description, channels, selectedFolders, drive, logo, primary, accent, font, contact, onSaved, modals, toaster, t]);
 
   return (
     <div className="flex flex-col gap-[16px]">
@@ -226,6 +254,73 @@ const ProjectModal: FC<{
             'One folder link per line. The raw material of the project (photos, videos, floor plans, documents) is read from these folders by the archive.'
           )}
         </div>
+      </div>
+      <div className="flex flex-col gap-[8px]">
+        <div className="text-[14px]">{t('project_brand', 'Brand of the designs')}</div>
+        <div className="text-[12px] text-textItemBlur">
+          {t(
+            'project_brand_hint',
+            'The template designs of this project put its logo, colors and contact line over the real photos.'
+          )}
+        </div>
+        <div className="flex items-center gap-[12px]">
+          <div
+            className="w-[120px] h-[60px] rounded-[8px] border border-newColColor flex items-center justify-center overflow-hidden cursor-pointer bg-boxHover"
+            onClick={chooseLogo}
+          >
+            {logo ? (
+              <img src={logo.path} className="max-w-full max-h-full object-contain" />
+            ) : (
+              <span className="text-[12px] text-textItemBlur">{t('choose_logo', 'Choose logo')}</span>
+            )}
+          </div>
+          {!!logo && (
+            <span
+              className="text-[13px] cursor-pointer text-textItemBlur hover:text-[#F97066]"
+              onClick={() => setLogo(undefined)}
+            >
+              {t('remove', 'Remove')}
+            </span>
+          )}
+          <div className="text-[12px] text-textItemBlur flex-1">
+            {t('logo_hint', 'A PNG with a transparent background fits best.')}
+          </div>
+        </div>
+        <div className="flex items-center gap-[16px] flex-wrap">
+          <label className="flex items-center gap-[8px] text-[13px] cursor-pointer">
+            <input
+              type="color"
+              value={primary || DEFAULT_PRIMARY}
+              onChange={(e) => setPrimary(e.target.value)}
+              className="w-[32px] h-[32px] cursor-pointer bg-transparent"
+            />
+            {t('brand_primary', 'Main color')}
+          </label>
+          <label className="flex items-center gap-[8px] text-[13px] cursor-pointer">
+            <input
+              type="color"
+              value={accent || DEFAULT_ACCENT}
+              onChange={(e) => setAccent(e.target.value)}
+              className="w-[32px] h-[32px] cursor-pointer bg-transparent"
+            />
+            {t('brand_accent', 'Accent color')}
+          </label>
+          <select
+            value={font || 'modern'}
+            onChange={(e) => setFont(e.target.value as 'modern' | 'elegant')}
+            className={`${inputClass} h-[36px] !w-auto`}
+          >
+            <option value="modern">{t('font_modern', 'Modern (Montserrat)')}</option>
+            <option value="elegant">{t('font_elegant', 'Elegant (Playfair Display)')}</option>
+          </select>
+        </div>
+        <input
+          value={contact}
+          maxLength={120}
+          onChange={(e) => setContact(e.target.value)}
+          placeholder={t('brand_contact_placeholder', 'Contact line: phone · website')}
+          className={`${inputClass} h-[44px]`}
+        />
       </div>
       <div className="flex justify-end">
         <Button onClick={save} loading={saving} disabled={!name.trim()}>
@@ -451,6 +546,25 @@ export const ProjectsComponent = () => {
                   </div>
                 )}
               </div>
+              {(!!project.brand.logoPath || !!project.brand.primary) && (
+                <div className="flex items-center gap-[8px]">
+                  {!!project.brand.logoPath && (
+                    <img
+                      src={project.brand.logoPath}
+                      className="h-[24px] max-w-[80px] object-contain"
+                    />
+                  )}
+                  {[project.brand.primary, project.brand.accent]
+                    .filter((p) => p)
+                    .map((color) => (
+                      <span
+                        key={color}
+                        className="w-[16px] h-[16px] rounded-full border border-newColColor"
+                        style={{ background: color }}
+                      />
+                    ))}
+                </div>
+              )}
               <div className="flex gap-[6px] flex-wrap">
                 {project.folders.map((p) => (
                   <div

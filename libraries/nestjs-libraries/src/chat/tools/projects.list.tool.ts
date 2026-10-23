@@ -17,7 +17,8 @@ export class ProjectsListTool implements AgentToolInterface {
     return createTool({
       id: 'projectsListTool',
       description: `List the projects of this customer (the organization), each with its description, the channels posting for it, its media folders, the Google Drive folders holding its raw material (with their sync status) and how many files of each kind were found there.
-When the user talks about a project, use its channels and its folders (mediaListTool with the folder id) for the posts and designs of that project, and projectFilesListTool for its raw material.`,
+When the user talks about a project, use its channels and its folders (mediaListTool with the folder id) for the posts and designs of that project, and projectFilesListTool for its raw material.
+Its brand (logo, colors, font, contact line) is what designTemplateTool puts on the designs of the project, it is set on the Projects page.`,
       inputSchema: z.object({}),
       mcp: {
         annotations: {
@@ -48,6 +49,13 @@ When the user talks about a project, use its channels and its folders (mediaList
               })
             ),
             files: z.record(z.number()).describe('Files found in Drive by kind'),
+            brand: z.object({
+              logoId: z.string().optional().describe('Media id of the logo'),
+              primary: z.string().optional(),
+              accent: z.string().optional(),
+              font: z.string().optional(),
+              contact: z.string().optional(),
+            }),
           })
         ),
       }),
@@ -79,6 +87,13 @@ When the user talks about a project, use its channels and its folders (mediaList
               fileCount: s.fileCount,
             })),
             files: p.files,
+            brand: {
+              logoId: p.brand.logoId,
+              primary: p.brand.primary,
+              accent: p.brand.accent,
+              font: p.brand.font,
+              contact: p.brand.contact,
+            },
           })),
         };
       },
