@@ -1024,5 +1024,13 @@
   "files_videos": "{{count}} video",
   "files_documents": "{{count}} belge",
   "sync_now": "Senkronize et",
-  "source_shared_by": "Paylaşan: {{email}}"
+  "source_shared_by": "Paylaşan: {{email}}",
+  "drive_guide_title": "Google Drive klasörü nasıl bağlanır",
+  "drive_step_share": "Google Drive'da projenin klasörüne sağ tıklayın ve Paylaş'ı seçin.",
+  "drive_step_viewer": "Yukarıdaki adresi Görüntüleyici olarak ekleyip gönderin. Drive bu adrese e-posta gönderilemediğini söyleyebilir; klasör yine de paylaşılır.",
+  "drive_step_link": "Klasörün bağlantısını kopyalayın (Paylaş > Bağlantıyı kopyala ya da klasör açıkken adres çubuğu).",
+  "drive_step_project": "Burada projeyi Düzenle ile açın, bağlantıyı Google Drive klasörleri kutusuna yapıştırıp kaydedin. Dosyalar birkaç dakika içinde listelenir; sonradan eklenenler için Senkronize et'e basın.",
+  "drive_guide_note": "Yalnızca paylaşılan klasör ve alt klasörleri görünür, Drive'ın geri kalanı görünmez. Dosyalar Drive'da kalır; burada yalnızca bilgileri tutulur, bir fotoğraf ya da video kullanılacağı zaman medya kütüphanesine kopyalanır. Drive'da paylaşımı kaldırmak erişimi bitirir.",
+  "hide": "Gizle",
+  "show_how": "Nasıl yapılır?"
 }

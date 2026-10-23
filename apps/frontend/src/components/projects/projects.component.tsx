@@ -274,6 +274,89 @@ const ProjectModal: FC<{
   );
 };
 
+// how a customer gives the archive access to a Drive folder
+const DriveGuide: FC<{
+  email: string | null;
+  connected: boolean;
+  onCopy: () => void;
+}> = ({ email, connected, onCopy }) => {
+  const t = useT();
+  const [open, setOpen] = useState<boolean | undefined>(undefined);
+  const shown = open ?? !connected;
+
+  if (!email) {
+    return (
+      <div className="p-[12px] rounded-[8px] border border-newColColor text-[13px] text-textItemBlur">
+        {t(
+          'drive_not_configured',
+          'Google Drive is not connected on this server yet: the Drive folders are saved, their files are listed once it is.'
+        )}
+      </div>
+    );
+  }
+
+  const steps = [
+    t(
+      'drive_step_share',
+      'In Google Drive, right click the folder of the project and choose Share.'
+    ),
+    t(
+      'drive_step_viewer',
+      'Add the address above as Viewer and send. Drive may say it can not email that address: the folder is shared anyway.'
+    ),
+    t(
+      'drive_step_link',
+      'Copy the link of the folder (Share > Copy link, or the address bar while the folder is open).'
+    ),
+    t(
+      'drive_step_project',
+      'Here, open the project with Edit, paste the link in Google Drive folders and save: its files are listed in a few minutes (Sync lists them again later).'
+    ),
+  ];
+
+  return (
+    <div className="flex flex-col gap-[12px] p-[16px] rounded-[8px] border border-newColColor text-[13px]">
+      <div className="flex items-center justify-between gap-[12px]">
+        <div className="text-[14px] font-[600]">
+          {t('drive_guide_title', 'Connect a Google Drive folder')}
+        </div>
+        <span
+          className="cursor-pointer text-textItemBlur hover:text-newTextColor shrink-0"
+          onClick={() => setOpen(!shown)}
+        >
+          {shown ? t('hide', 'Hide') : t('show_how', 'Show how')}
+        </span>
+      </div>
+      <div className="flex items-center gap-[10px] flex-wrap">
+        <span className="text-textItemBlur">
+          {t('drive_share_with', 'Share the Drive folders of the projects as Viewer with:')}
+        </span>
+        <span className="font-[600] break-all px-[8px] py-[2px] rounded-[4px] bg-boxHover">
+          {email}
+        </span>
+        <span className="cursor-pointer text-[#612BD3] hover:underline" onClick={onCopy}>
+          {t('copy', 'Copy')}
+        </span>
+      </div>
+      {shown && (
+        <>
+          <ol className="flex flex-col gap-[6px] list-decimal ps-[20px] text-textItemBlur">
+            {steps.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
+          <div className="text-[12px] text-textItemBlur">
+            {t(
+              'drive_guide_note',
+              'Only the shared folder and its subfolders are visible, nothing else of the Drive. The files stay in Drive: only their details are kept here, and a photo or video is copied into the media library when it is used. Removing the share in Drive stops the access.'
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 export const ProjectsComponent = () => {
   const t = useT();
   const fetch = useFetch();
@@ -356,32 +439,12 @@ export const ProjectsComponent = () => {
         <Button onClick={open()}>{t('new_project', 'New project')}</Button>
       </div>
       {!!drive && (
-        <div className="flex items-center gap-[10px] flex-wrap p-[12px] rounded-[8px] border border-newColColor text-[13px]">
-          {drive.email ? (
-            <>
-              <span className="text-textItemBlur">
-                {t(
-                  'drive_share_with',
-                  'Share the Drive folders of the projects as Viewer with:'
-                )}
-              </span>
-              <span className="font-[600] break-all">{drive.email}</span>
-              <span
-                className="cursor-pointer text-[#612BD3] hover:underline"
-                onClick={copyEmail}
-              >
-                {t('copy', 'Copy')}
-              </span>
-            </>
-          ) : (
-            <span className="text-textItemBlur">
-              {t(
-                'drive_not_configured',
-                'Google Drive is not connected on this server yet: the Drive folders are saved, their files are listed once it is.'
-              )}
-            </span>
-          )}
-        </div>
+        <DriveGuide
+          email={drive.email}
+          // open until a folder of this customer was listed once
+          connected={!!data?.some((p) => p.sources.some((s) => s.status === 'ready'))}
+          onCopy={copyEmail}
+        />
       )}
       {isLoading ? (
         <div className="text-textItemBlur">{t('loading', 'Loading...')}</div>
