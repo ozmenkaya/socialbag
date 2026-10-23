@@ -43,7 +43,7 @@ export const useMediaFolders = () => {
   return useSWR<MediaFolderItem[]>('media-folders', load);
 };
 
-const useFolderIntegrationList = () => {
+export const useFolderIntegrationList = () => {
   const fetch = useFetch();
   const load = useCallback(async () => {
     return (await (await fetch('/integrations/list')).json()).integrations;
@@ -54,7 +54,7 @@ const useFolderIntegrationList = () => {
   >('media-folders-integrations', load, { revalidateOnFocus: false });
 };
 
-const errorMessage = async (response: Response, fallback: string) => {
+export const errorMessage = async (response: Response, fallback: string) => {
   const body = await response.json().catch(() => ({}));
   return (Array.isArray(body.message) ? body.message[0] : body.message) || fallback;
 };

@@ -48,6 +48,7 @@ model Organization {
   adsConnections      AdsConnection[]
   postBoosts          PostBoost[]
   mediaFolders        MediaFolder[]
+  projects            Project[]
 
   @@index([apiKey])
   @@index([streakSince])
@@ -258,10 +259,12 @@ model MediaFolder {
   autoPostTimezone String                   @default("UTC")
   autoPostContent  String                   @default("")
   autoPostFormat   String                   @default("post")
+  projectId        String?
   createdAt        DateTime                 @default(now())
   updatedAt        DateTime                 @updatedAt
   deletedAt        DateTime?
   organization     Organization             @relation(fields: [organizationId], references: [id])
+  project          Project?                 @relation(fields: [projectId], references: [id])
   parent           MediaFolder?             @relation("MediaFolderTree", fields: [parentId], references: [id])
   children         MediaFolder[]            @relation("MediaFolderTree")
   media            Media[]
@@ -270,7 +273,52 @@ model MediaFolder {
 
   @@index([organizationId])
   @@index([parentId])
+  @@index([projectId])
   @@index([deletedAt])
+}
+
+// A project of the customer (the organization is the customer): its channels,
+// media folders and the outside sources holding its raw material
+model Project {
+  id             String               @id @default(uuid())
+  organizationId String
+  name           String
+  description    String               @default("")
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  deletedAt      DateTime?
+  organization   Organization         @relation(fields: [organizationId], references: [id])
+  integrations   ProjectIntegration[]
+  folders        MediaFolder[]
+  sources        ProjectSource[]
+
+  @@index([organizationId])
+  @@index([deletedAt])
+}
+
+// A channel can post for several projects of the same customer
+model ProjectIntegration {
+  projectId     String
+  integrationId String
+  project       Project     @relation(fields: [projectId], references: [id])
+  integration   Integration @relation(fields: [integrationId], references: [id])
+
+  @@id([projectId, integrationId])
+  @@index([integrationId])
+}
+
+// Where the raw material of a project lives (a shared Google Drive folder)
+model ProjectSource {
+  id         String   @id @default(uuid())
+  projectId  String
+  type       String
+  externalId String
+  url        String
+  createdAt  DateTime @default(now())
+  project    Project  @relation(fields: [projectId], references: [id])
+
+  @@unique([projectId, type, externalId])
+  @@index([projectId])
 }
 
 // One slot of a folder's schedule, taken by one media
@@ -453,6 +501,7 @@ model Integration {
   organization          Organization           @relation(fields: [organizationId], references: [id])
   webhooks              IntegrationsWebhooks[]
   mediaFolders          MediaFolderIntegration[]
+  projects              ProjectIntegration[]
   orderItems            OrderItems[]
   plugs                 Plugs[]
   posts                 Post[]

@@ -21,6 +21,7 @@ import { UploadWidgetTool } from '@gitroom/nestjs-libraries/chat/tools/upload.wi
 import { UploadWidgetTicketTool } from '@gitroom/nestjs-libraries/chat/tools/upload.widget.ticket.tool';
 import { UploadWidgetStatusTool } from '@gitroom/nestjs-libraries/chat/tools/upload.widget.status.tool';
 import { MediaFoldersListTool } from '@gitroom/nestjs-libraries/chat/tools/media.folders.list.tool';
+import { ProjectsListTool } from '@gitroom/nestjs-libraries/chat/tools/projects.list.tool';
 import { MediaFolderCreateTool } from '@gitroom/nestjs-libraries/chat/tools/media.folder.create.tool';
 import { MediaMoveTool } from '@gitroom/nestjs-libraries/chat/tools/media.move.tool';
 import { MediaViewTool } from '@gitroom/nestjs-libraries/chat/tools/media.view.tool';
@@ -48,6 +49,7 @@ export const toolList = [
   MediaListTool,
   MediaViewTool,
   MediaFoldersListTool,
+  ProjectsListTool,
   MediaFolderCreateTool,
   MediaMoveTool,
   DesignVideoTool,
