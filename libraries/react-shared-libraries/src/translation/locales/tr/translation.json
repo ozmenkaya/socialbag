@@ -1045,6 +1045,8 @@
   "videos": "Videolar",
   "documents": "Belgeler",
   "drive_files_count": "{{count}} dosya",
+  "drive_folders_count": "{{count}} klasör",
+  "drive_subfolder_empty": "Bu klasör boş",
   "search_drive_files": "Dosya ya da klasör adıyla ara",
   "no_drive_files_match": "Eşleşen dosya yok",
   "drive_folder_empty": "Drive klasörlerinde dosya bulunamadı",

@@ -404,13 +404,14 @@ export class ProjectsRepository {
   getFiles(
     org: string,
     projectId: string,
-    query: { kind?: string; search?: string; skip: number; take: number }
+    query: { kind?: string; search?: string; folder?: string; skip: number; take: number }
   ) {
     const where: Prisma.ProjectFileWhereInput = {
       organizationId: org,
       projectId,
       deletedAt: null,
       ...(query.kind ? { kind: query.kind } : {}),
+      ...(query.folder !== undefined ? { path: query.folder } : {}),
       ...(query.search
         ? {
             OR: [
@@ -445,6 +446,21 @@ export class ProjectsRepository {
         },
       }),
     ]);
+  }
+
+  // the folders under a folder ("" the root) that hold files, with how many
+  getFolderPaths(org: string, projectId: string, query: { kind?: string; folder: string }) {
+    return this._projectFile.model.projectFile.groupBy({
+      by: ['path'],
+      where: {
+        organizationId: org,
+        projectId,
+        deletedAt: null,
+        ...(query.kind ? { kind: query.kind } : {}),
+        path: query.folder ? { startsWith: `${query.folder} / ` } : { not: '' },
+      },
+      _count: { _all: true },
+    });
   }
 
   getFile(org: string, id: string) {

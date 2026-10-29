@@ -1047,6 +1047,8 @@
   "videos": "Videos",
   "documents": "Documents",
   "drive_files_count": "{{count}} files",
+  "drive_folders_count": "{{count}} folders",
+  "drive_subfolder_empty": "This folder is empty",
   "search_drive_files": "Search by file or folder name",
   "no_drive_files_match": "No file matches",
   "drive_folder_empty": "No files were found in the Drive folders",

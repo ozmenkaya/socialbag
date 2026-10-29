@@ -66,6 +66,7 @@ import {
 } from '@gitroom/frontend/components/media/media.folders';
 import {
   ProjectFileItem,
+  ProjectFolderItem,
   useProjectFiles,
   useProjects,
 } from '@gitroom/frontend/components/projects/use.projects';
@@ -344,6 +345,42 @@ const DriveTile: FC<{
   );
 };
 
+const DriveFolderTile: FC<{
+  folder: ProjectFolderItem;
+  onClick: () => void;
+}> = ({ folder, onClick }) => {
+  const t = useT();
+  return (
+    <div className="px-[3px] py-[3px] mobile:p-[6px] float-left rounded-[6px] w8-max mobile:!w-1/2 mobile:!max-w-[50%] aspect-square cursor-pointer">
+      <div
+        onClick={onClick}
+        className="w-full h-full rounded-[6px] border border-newColColor bg-newBgColorInner hover:bg-boxHover flex flex-col items-center justify-center gap-[8px] px-[10px] text-center"
+      >
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" className="text-[#612BD3]">
+          <path
+            d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"
+            fill="currentColor"
+            fillOpacity="0.15"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <div
+          className="w-full truncate text-[13px] font-[500]"
+          data-tooltip-id="tooltip"
+          data-tooltip-content={folder.name}
+        >
+          {folder.name}
+        </div>
+        <div className="text-[12px] text-textItemBlur">
+          {t('drive_files_count', '{{count}} files', { count: folder.count })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // the files of a project's Drive folders: they are looked at here and copied
 // into the library (or straight into the post) when they are used
 const ProjectDriveFiles: FC<{
@@ -363,19 +400,28 @@ const ProjectDriveFiles: FC<{
   const [kind, setKind] = useState<string>(type || '');
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebounce(search, 300);
+  // the Drive folder looked into, "" its root
+  const [folder, setFolder] = useState('');
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<ProjectFileItem[]>([]);
   const [importing, setImporting] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
   useEffect(() => {
+    setFolder('');
+  }, [projectId]);
+  useEffect(() => {
     setPage(0);
-  }, [kind, debouncedSearch, projectId]);
+  }, [kind, debouncedSearch, projectId, folder]);
   const { data, isLoading, mutate } = useProjectFiles(
     projectId,
     kind,
     debouncedSearch.trim(),
+    folder,
     page
   );
+  const searching = !!debouncedSearch.trim();
+  const crumbs = folder ? folder.split(' / ') : [];
+  const folders = (!searching && page === 0 && data?.folders) || [];
 
   const importFile = useCallback(
     async (file: ProjectFileItem) => {
@@ -454,10 +500,38 @@ const ProjectDriveFiles: FC<{
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="mb-[8px] flex items-center gap-[8px] text-[14px] font-[600] mobile:hidden">
-        <span>Drive · {project?.name}</span>
+      <div className="mb-[8px] flex items-center gap-[6px] text-[14px] font-[600] flex-wrap">
+        <span
+          onClick={() => setFolder('')}
+          className={clsx(crumbs.length && !searching && 'cursor-pointer hover:text-[#612BD3]')}
+        >
+          Drive · {project?.name}
+        </span>
+        {!searching &&
+          crumbs.map((name, i) => (
+            <Fragment key={i}>
+              <span className="text-textItemBlur font-[400]">/</span>
+              <span
+                onClick={() => setFolder(crumbs.slice(0, i + 1).join(' / '))}
+                className={clsx(i < crumbs.length - 1 && 'cursor-pointer hover:text-[#612BD3]')}
+              >
+                {name}
+              </span>
+            </Fragment>
+          ))}
         <span className="text-[12px] font-[400] text-textItemBlur">
-          {t('drive_files_count', '{{count}} files', { count: data?.total || 0 })}
+          {searching
+            ? t('drive_files_count', '{{count}} files', { count: data?.total || 0 })
+            : [
+                folders.length
+                  ? t('drive_folders_count', '{{count}} folders', { count: folders.length })
+                  : '',
+                data?.total
+                  ? t('drive_files_count', '{{count}} files', { count: data.total })
+                  : '',
+              ]
+                .filter(Boolean)
+                .join(' · ')}
         </span>
       </div>
       <div className="flex items-center gap-[12px] mobile:flex-wrap mb-[8px]">
@@ -494,12 +568,14 @@ const ProjectDriveFiles: FC<{
                 <div className="w-full h-full bg-newSep rounded-[6px] animate-pulse" />
               </div>
             ))}
-          {!isLoading && !data?.files?.length && (
+          {!isLoading && !data?.files?.length && !folders.length && (
             <div className="h-full flex flex-col items-center justify-center gap-[12px] text-center px-[20px]">
               <NoMediaIcon />
               <div className="text-[16px] font-[600]">
                 {debouncedSearch || kind
                   ? t('no_drive_files_match', 'No file matches')
+                  : folder
+                  ? t('drive_subfolder_empty', 'This folder is empty')
                   : ready
                   ? t('drive_folder_empty', 'No files were found in the Drive folders')
                   : t('drive_not_listed', 'The Drive folders of this project are not listed yet')}
@@ -525,6 +601,9 @@ const ProjectDriveFiles: FC<{
               )}
             </div>
           )}
+          {folders.map((p) => (
+            <DriveFolderTile key={p.path} folder={p} onClick={() => setFolder(p.path)} />
+          ))}
           {data?.files?.map((file) => (
             <DriveTile
               key={file.id}

@@ -92,6 +92,13 @@ export class ProjectFilesQueryDto {
   @MaxLength(200)
   search?: string;
 
+  // the folder looked into ("" its root, "Exterior / Drone"): its files and
+  // the folders right under it, instead of every file of the project
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  folder?: string;
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()

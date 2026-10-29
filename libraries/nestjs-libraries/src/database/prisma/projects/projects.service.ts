@@ -305,14 +305,18 @@ export class ProjectsService {
   async getFiles(
     org: string,
     projectId: string,
-    query: { kind?: string; search?: string; page?: number }
+    query: { kind?: string; search?: string; folder?: string; page?: number }
   ) {
     await this.findProject(org, projectId);
     const take = 100;
     const page = Math.max(0, query.page || 0);
+    const search = query.search?.trim() || undefined;
+    // a search looks through every folder
+    const folder = search ? undefined : query.folder?.trim();
     const [total, files] = await this._projectsRepository.getFiles(org, projectId, {
       kind: query.kind,
-      search: query.search?.trim() || undefined,
+      search,
+      folder,
       skip: page * take,
       take,
     });
@@ -321,7 +325,29 @@ export class ProjectsService {
       total,
       pages: Math.ceil(total / take),
       files: files.map((p) => ({ ...p, size: p.size !== null ? Number(p.size) : null })),
+      ...(folder !== undefined
+        ? { folders: await this.getSubfolders(org, projectId, folder, query.kind) }
+        : {}),
     };
+  }
+
+  // the folders right under a folder, each with the files it holds in all
+  // its own folders
+  private async getSubfolders(org: string, projectId: string, folder: string, kind?: string) {
+    const paths = await this._projectsRepository.getFolderPaths(org, projectId, {
+      kind,
+      folder,
+    });
+    const prefix = folder ? `${folder} / ` : '';
+    const folders = new Map<string, number>();
+    for (const p of paths) {
+      const name = p.path.slice(prefix.length).split(' / ')[0];
+      folders.set(name, (folders.get(name) || 0) + p._count._all);
+    }
+
+    return [...folders.entries()]
+      .sort(([a], [b]) => a.localeCompare(b, 'tr'))
+      .map(([name, count]) => ({ name, path: `${prefix}${name}`, count }));
   }
 
   private async findFile(org: string, id: string) {

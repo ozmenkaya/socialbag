@@ -70,16 +70,25 @@ export interface ProjectFileItem {
   mediaId: string | null;
 }
 
-// a page of the files found in a project's Drive folders
+export interface ProjectFolderItem {
+  name: string;
+  // "Exterior / Drone"
+  path: string;
+  count: number;
+}
+
+// a page of the files of a folder ("" the root) of a project's Drive, with
+// the folders under it; a search looks through every folder
 export const useProjectFiles = (
   projectId: string,
   kind: string,
   search: string,
+  folder: string,
   page: number
 ) => {
   const fetch = useFetch();
   const load = useCallback(async () => {
-    const params = new URLSearchParams({ page: String(page) });
+    const params = new URLSearchParams({ page: String(page), folder });
     if (kind) {
       params.set('kind', kind);
     }
@@ -87,10 +96,12 @@ export const useProjectFiles = (
       params.set('search', search);
     }
     return (await fetch(`/projects/${projectId}/files?${params.toString()}`)).json();
-  }, [fetch, projectId, kind, search, page]);
+  }, [fetch, projectId, kind, search, folder, page]);
 
-  return useSWR<{ total: number; pages: number; files: ProjectFileItem[] }>(
-    `project-files-${projectId}-${kind}-${search}-${page}`,
-    load
-  );
+  return useSWR<{
+    total: number;
+    pages: number;
+    files: ProjectFileItem[];
+    folders?: ProjectFolderItem[];
+  }>(`project-files-${projectId}-${kind}-${search}-${folder}-${page}`, load);
 };
