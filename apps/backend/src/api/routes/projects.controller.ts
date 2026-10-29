@@ -10,14 +10,20 @@ import {
   ProjectFilesQueryDto,
 } from '@gitroom/nestjs-libraries/dtos/projects/project.dto';
 import { ClientsService } from '@gitroom/nestjs-libraries/database/prisma/clients/clients.service';
-import { ClientDto } from '@gitroom/nestjs-libraries/dtos/clients/client.dto';
+import {
+  ClientDto,
+  ProjectRequestsQueryDto,
+  ProjectRequestUpdateDto,
+} from '@gitroom/nestjs-libraries/dtos/clients/client.dto';
+import { RequestsService } from '@gitroom/nestjs-libraries/database/prisma/requests/requests.service';
 
 @ApiTags('Projects')
 @Controller('/projects')
 export class ProjectsController {
   constructor(
     private _projectsService: ProjectsService,
-    private _clientsService: ClientsService
+    private _clientsService: ClientsService,
+    private _requestsService: RequestsService
   ) {}
 
   @Get('/')
@@ -51,6 +57,27 @@ export class ProjectsController {
     @Param('clientId') clientId: string
   ) {
     return this._clientsService.deleteClient(org.id, clientId);
+  }
+
+  // what the customers asked for from the portal
+  @Get('/requests')
+  getRequests(
+    @GetOrgFromRequest() org: Organization,
+    @Query() query: ProjectRequestsQueryDto
+  ) {
+    return this._requestsService.getRequests(org.id, {
+      status: query.status,
+      projectIds: query.projectId ? [query.projectId] : undefined,
+    });
+  }
+
+  @Put('/requests/:requestId')
+  updateRequest(
+    @GetOrgFromRequest() org: Organization,
+    @Param('requestId') requestId: string,
+    @Body() body: ProjectRequestUpdateDto
+  ) {
+    return this._requestsService.updateRequest(org.id, requestId, body);
   }
 
   // the service account the Drive folders are shared with

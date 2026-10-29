@@ -63,6 +63,8 @@ import { ApprovalsRepository } from '@gitroom/nestjs-libraries/database/prisma/a
 import { ApprovalsService } from '@gitroom/nestjs-libraries/database/prisma/approvals/approvals.service';
 import { ClientsRepository } from '@gitroom/nestjs-libraries/database/prisma/clients/clients.repository';
 import { ClientsService } from '@gitroom/nestjs-libraries/database/prisma/clients/clients.service';
+import { RequestsRepository } from '@gitroom/nestjs-libraries/database/prisma/requests/requests.repository';
+import { RequestsService } from '@gitroom/nestjs-libraries/database/prisma/requests/requests.service';
 import { GoogleDriveService } from '@gitroom/nestjs-libraries/google-drive/google.drive.service';
 import { DesignTemplatesService } from '@gitroom/nestjs-libraries/design-templates/design.templates.service';
 
@@ -137,6 +139,8 @@ import { DesignTemplatesService } from '@gitroom/nestjs-libraries/design-templat
     ApprovalsService,
     ClientsRepository,
     ClientsService,
+    RequestsRepository,
+    RequestsService,
     GoogleDriveService,
     DesignTemplatesService,
   ],

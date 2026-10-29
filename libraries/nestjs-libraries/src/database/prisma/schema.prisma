@@ -298,6 +298,7 @@ model Project {
   sources        ProjectSource[]
   files          ProjectFile[]
   clients        ProjectClientProject[]
+  requests       ProjectRequest[]
 
   @@index([organizationId])
   @@index([deletedAt])
@@ -319,8 +320,35 @@ model ProjectClient {
   updatedAt      DateTime               @updatedAt
   organization   Organization           @relation(fields: [organizationId], references: [id])
   projects       ProjectClientProject[]
+  requests       ProjectRequest[]
 
   @@index([organizationId])
+}
+
+// What a customer asks for from the portal (a post they want, with photos)
+model ProjectRequest {
+  id             String         @id @default(uuid())
+  organizationId String
+  projectId      String
+  clientId       String?
+  // who sent it, kept when the account is removed
+  clientName     String
+  title          String
+  description    String         @default("")
+  wantedDate     DateTime?
+  // media of the library the customer attached
+  mediaIds       String[]
+  // new, in_progress or done
+  status         String         @default("new")
+  // the answer of the agency, shown to the customer
+  reply          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  project        Project        @relation(fields: [projectId], references: [id])
+  client         ProjectClient? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([projectId])
 }
 
 model ProjectClientProject {

@@ -106,3 +106,29 @@ export const usePortalApprovals = () => {
   // looked at again when the customer comes back to the page
   return useSWR('portal-approvals', load);
 };
+
+export interface PortalRequest {
+  id: string;
+  projectId: string;
+  projectName: string;
+  clientName: string;
+  title: string;
+  description: string;
+  wantedDate: string | null;
+  status: 'new' | 'in_progress' | 'done';
+  reply: string | null;
+  createdAt: string;
+  media: { id: string; path: string; thumbnail: string | null }[];
+}
+
+export const usePortalRequests = () => {
+  const fetch = useFetch();
+  const signedOut = useSignedOut();
+  const load = useCallback(async () => {
+    const response = await fetch('/portal/requests');
+    signedOut(response);
+    return response.ok ? ((await response.json()) as PortalRequest[]) : [];
+  }, [fetch, signedOut]);
+
+  return useSWR('portal-requests', load);
+};

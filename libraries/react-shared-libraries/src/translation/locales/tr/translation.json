@@ -1106,5 +1106,15 @@
   "client_credentials_hint": "Bunları müşteriye gönderin, şifre bir daha gösterilmez. Daha sonra buradan ya da müşteri tarafından değiştirilebilir.",
   "client_credentials_message": "Merhaba {{name}}, projelerinizi, planlanan paylaşımları ve onayınızı bekleyen tasarımları buradan takip edebilirsiniz:\n{{url}}\nKullanıcı adı: {{username}}\nŞifre: {{password}}",
   "client_portal_address": "Adres",
-  "send_on_whatsapp": "WhatsApp'tan gönder"
+  "send_on_whatsapp": "WhatsApp'tan gönder",
+  "customer_requests": "Müşteri talepleri",
+  "request_status_new": "Yeni",
+  "request_status_in_progress": "Hazırlanıyor",
+  "request_status_done": "Tamamlandı",
+  "request_save_failed": "Talep kaydedilemedi",
+  "request_saved": "Kaydedildi, müşteri panelde görüyor",
+  "request_files": "{{count}} dosya",
+  "request_wanted_date": "İstenen tarih: {{date}}",
+  "request_reply_placeholder": "Müşteriye cevap (panelde görünür)",
+  "no_requests": "Talep yok"
 }

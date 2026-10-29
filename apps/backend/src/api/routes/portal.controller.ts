@@ -1,4 +1,21 @@
-import { Body, Controller, Get, Param, Post, Query, Req, Res } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  Req,
+  Res,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
+import { streamUploadOptions } from '@gitroom/nestjs-libraries/upload/multer.stream.engine';
+import { ThrottlerRealIpGuard } from '@gitroom/nestjs-libraries/throttler/throttler.provider';
 import { Request, Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
 import { ClientsService } from '@gitroom/nestjs-libraries/database/prisma/clients/clients.service';
@@ -6,6 +23,7 @@ import {
   PortalAnswerDto,
   PortalPasswordDto,
   PortalPostsQueryDto,
+  PortalRequestDto,
 } from '@gitroom/nestjs-libraries/dtos/clients/client.dto';
 import { setPortalCookie } from '@gitroom/backend/services/auth/portal.auth.middleware';
 
@@ -43,6 +61,34 @@ export class PortalController {
       body.action,
       body.note
     );
+  }
+
+  // a photo or video for a request, the session is checked before anything
+  // is streamed to storage
+  @UseGuards(ThrottlerRealIpGuard)
+  @Throttle({ default: { limit: 100, ttl: 3600000 } })
+  @Post('/upload')
+  @UseInterceptors(FileInterceptor('file', streamUploadOptions()))
+  upload(@Req() req: Request, @UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+    // @ts-ignore
+    return this._clientsService.uploadFile(req.portalClient, file);
+  }
+
+  @Get('/requests')
+  requests(@Req() req: Request) {
+    // @ts-ignore
+    return this._clientsService.getRequests(req.portalClient);
+  }
+
+  @UseGuards(ThrottlerRealIpGuard)
+  @Throttle({ default: { limit: 30, ttl: 3600000 } })
+  @Post('/requests')
+  createRequest(@Req() req: Request, @Body() body: PortalRequestDto) {
+    // @ts-ignore
+    return this._clientsService.createRequest(req.portalClient, body);
   }
 
   @Post('/password')

@@ -124,3 +124,27 @@ export const useProjectClients = () => {
 
   return useSWR<ProjectClientItem[]>('project-clients', load);
 };
+
+export interface ProjectRequestItem {
+  id: string;
+  projectId: string;
+  projectName: string;
+  clientName: string;
+  title: string;
+  description: string;
+  wantedDate: string | null;
+  status: 'new' | 'in_progress' | 'done';
+  reply: string | null;
+  createdAt: string;
+  media: { id: string; path: string; thumbnail: string | null }[];
+}
+
+// what the customers asked for from the customer portal
+export const useProjectRequests = (status: string) => {
+  const fetch = useFetch();
+  const load = useCallback(async () => {
+    return (await fetch(`/projects/requests${status ? `?status=${status}` : ''}`)).json();
+  }, [fetch, status]);
+
+  return useSWR<ProjectRequestItem[]>(`project-requests-${status}`, load);
+};

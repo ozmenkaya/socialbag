@@ -35,6 +35,8 @@ import { DesignVideoTool } from '@gitroom/nestjs-libraries/chat/tools/design.vid
 import { DesignVideoStatusTool } from '@gitroom/nestjs-libraries/chat/tools/design.video.status.tool';
 import { ApprovalRequestTool } from '@gitroom/nestjs-libraries/chat/tools/approval.request.tool';
 import { ApprovalStatusTool } from '@gitroom/nestjs-libraries/chat/tools/approval.status.tool';
+import { ProjectRequestsListTool } from '@gitroom/nestjs-libraries/chat/tools/project.requests.list.tool';
+import { ProjectRequestUpdateTool } from '@gitroom/nestjs-libraries/chat/tools/project.request.update.tool';
 
 export const toolList = [
   IntegrationListTool,
@@ -65,6 +67,8 @@ export const toolList = [
   ProjectFileViewTool,
   ProjectFileImportTool,
   ProjectDriveSaveTool,
+  ProjectRequestsListTool,
+  ProjectRequestUpdateTool,
   MediaFolderCreateTool,
   MediaMoveTool,
   DesignVideoTool,

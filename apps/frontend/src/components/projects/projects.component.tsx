@@ -21,6 +21,7 @@ import {
 } from '@gitroom/frontend/components/projects/use.projects';
 import { showMediaBox } from '@gitroom/frontend/components/media/media.component';
 import { ProjectClients } from '@gitroom/frontend/components/projects/project.clients';
+import { ProjectRequests } from '@gitroom/frontend/components/projects/project.requests';
 
 // the colors of the template designs when the project has none
 const DEFAULT_PRIMARY = '#1F2A44';
@@ -524,6 +525,7 @@ export const ProjectsComponent = () => {
           onCopy={copyEmail}
         />
       )}
+      <ProjectRequests />
       {!!data?.length && <ProjectClients projects={data} />}
       {isLoading ? (
         <div className="text-textItemBlur">{t('loading', 'Loading...')}</div>

@@ -1,5 +1,6 @@
 import {
   ArrayMaxSize,
+  IsUUID,
   IsArray,
   IsBoolean,
   IsDateString,
@@ -77,4 +78,50 @@ export class PortalPasswordDto {
   @MinLength(6)
   @MaxLength(100)
   password: string;
+}
+
+export class PortalRequestDto {
+  @IsString()
+  projectId: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(150)
+  title: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  description?: string;
+
+  @IsOptional()
+  @IsDateString()
+  wantedDate?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsUUID('all', { each: true })
+  mediaIds?: string[];
+}
+
+export class ProjectRequestsQueryDto {
+  @IsOptional()
+  @IsIn(['new', 'in_progress', 'done'])
+  status?: 'new' | 'in_progress' | 'done';
+
+  @IsOptional()
+  @IsString()
+  projectId?: string;
+}
+
+export class ProjectRequestUpdateDto {
+  @IsOptional()
+  @IsIn(['new', 'in_progress', 'done'])
+  status?: 'new' | 'in_progress' | 'done';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  reply?: string;
 }

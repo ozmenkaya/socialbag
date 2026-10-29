@@ -13,9 +13,11 @@ import {
   PortalChannel,
   PortalMe,
   PortalPost,
+  PortalRequest,
   usePortalApprovals,
   usePortalMe,
   usePortalPosts,
+  usePortalRequests,
 } from '@gitroom/frontend/components/portal/use.portal';
 
 // The customer portal is for the customers of the agency, it speaks Turkish
@@ -583,11 +585,306 @@ const ProjectsTab: FC<{ me: PortalMe; projectId?: string }> = ({ me, projectId }
   </div>
 );
 
+const REQUEST_STATUS: Record<PortalRequest['status'], [string, string]> = {
+  new: ['Alındı', 'bg-[#612BD3]/15 text-[#612BD3]'],
+  in_progress: ['Hazırlanıyor', 'bg-[#F79009] text-white'],
+  done: ['Tamamlandı', 'bg-[#12B76A] text-white'],
+};
+
+interface RequestFile {
+  key: string;
+  name: string;
+  preview: string;
+  video: boolean;
+  media?: { id: string; path: string };
+  failed?: boolean;
+}
+
+const RequestForm: FC<{
+  me: PortalMe;
+  projectId?: string;
+  onClose: () => void;
+  onSent: () => void;
+}> = ({ me, projectId: initialProject, onClose, onSent }) => {
+  const fetch = useFetch();
+  const toaster = useToaster();
+  const [projectId, setProjectId] = useState(initialProject || me.projects[0]?.id || '');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [wantedDate, setWantedDate] = useState('');
+  const [files, setFiles] = useState<RequestFile[]>([]);
+  const [sending, setSending] = useState(false);
+  const uploading = files.some((p) => !p.media && !p.failed);
+
+  // each file goes up as soon as it is picked, the request only lists them
+  const pick = useCallback(
+    async (list: FileList | null) => {
+      for (const file of Array.from(list || [])) {
+        const item: RequestFile = {
+          key: `${file.name}-${file.size}-${Math.random()}`,
+          name: file.name,
+          preview: URL.createObjectURL(file),
+          video: file.type.startsWith('video/'),
+        };
+        setFiles((prev) => [...prev, item]);
+        const body = new FormData();
+        body.append('file', file);
+        const response = await fetch('/portal/upload', { method: 'POST', body }).catch(
+          () => undefined
+        );
+        if (!response?.ok) {
+          toaster.show(
+            response
+              ? await errorMessage(response, `${file.name} yüklenemedi`)
+              : `${file.name} yüklenemedi`,
+            'warning'
+          );
+        }
+        const media = response?.ok ? await response.json() : undefined;
+        setFiles((prev) =>
+          prev.map((p) =>
+            p.key === item.key ? { ...p, media, failed: !media } : p
+          )
+        );
+      }
+    },
+    [fetch, toaster]
+  );
+
+  const send = useCallback(
+    async (e: FormEvent) => {
+      e.preventDefault();
+      if (!title.trim() || !projectId || uploading) {
+        return;
+      }
+      setSending(true);
+      const response = await fetch('/portal/requests', {
+        method: 'POST',
+        body: JSON.stringify({
+          projectId,
+          title: title.trim(),
+          description: description.trim(),
+          // noon, so the day stays the same in every time zone
+          ...(wantedDate ? { wantedDate: new Date(`${wantedDate}T12:00:00`).toISOString() } : {}),
+          mediaIds: files.filter((p) => p.media).map((p) => p.media!.id),
+        }),
+      });
+      setSending(false);
+      if (!response.ok) {
+        toaster.show(await errorMessage(response, 'Talebiniz gönderilemedi'), 'warning');
+        return;
+      }
+      toaster.show('Talebiniz iletildi', 'success');
+      onSent();
+    },
+    [fetch, toaster, projectId, title, description, wantedDate, files, uploading, onSent]
+  );
+
+  return (
+    <form
+      onSubmit={send}
+      className="bg-newBgColorInner border border-newTableBorder rounded-[12px] p-[16px] flex flex-col gap-[12px]"
+    >
+      <div className="text-[16px] font-[600]">Yeni talep</div>
+      {me.projects.length > 1 && (
+        <select
+          value={projectId}
+          onChange={(e) => setProjectId(e.target.value)}
+          className={inputClass}
+        >
+          {me.projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      )}
+      <input
+        value={title}
+        maxLength={150}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="Ne istiyorsunuz? (ör. Yeni daire tanıtım paylaşımı)"
+        className={inputClass}
+      />
+      <textarea
+        value={description}
+        maxLength={4000}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="Detaylar: metinde ne yazsın, nelere dikkat edelim..."
+        className="w-full min-h-[110px] px-[14px] py-[10px] rounded-[10px] bg-newBgColor border border-newColColor text-[15px] outline-none focus:border-[#612BD3]"
+      />
+      <label className="flex flex-col gap-[6px]">
+        <span className="text-[13px] text-textItemBlur">Ne zaman paylaşılsın? (isteğe bağlı)</span>
+        <input
+          type="date"
+          value={wantedDate}
+          onChange={(e) => setWantedDate(e.target.value)}
+          className={inputClass}
+        />
+      </label>
+      <div className="flex flex-col gap-[8px]">
+        <span className="text-[13px] text-textItemBlur">Fotoğraf / video (isteğe bağlı)</span>
+        <div className="flex gap-[8px] flex-wrap">
+          {files.map((file) => (
+            <div
+              key={file.key}
+              className="relative w-[72px] h-[72px] rounded-[8px] overflow-hidden bg-newBgColor"
+            >
+              {file.video ? (
+                <video src={file.preview} className="w-full h-full object-cover" muted={true} />
+              ) : (
+                <img src={file.preview} alt={file.name} className="w-full h-full object-cover" />
+              )}
+              {!file.media && (
+                <div className="absolute inset-0 bg-black/50 text-white text-[11px] flex items-center justify-center text-center px-[4px]">
+                  {file.failed ? 'Yüklenemedi' : 'Yükleniyor...'}
+                </div>
+              )}
+              {(!!file.media || file.failed) && (
+                <div
+                  onClick={() => setFiles((prev) => prev.filter((p) => p.key !== file.key))}
+                  className="absolute top-[2px] end-[2px] w-[20px] h-[20px] rounded-full bg-black/60 text-white text-[12px] flex items-center justify-center cursor-pointer"
+                >
+                  ×
+                </div>
+              )}
+            </div>
+          ))}
+          <label className="w-[72px] h-[72px] rounded-[8px] border border-dashed border-newColColor flex items-center justify-center text-[28px] text-textItemBlur cursor-pointer hover:bg-boxHover">
+            +
+            <input
+              type="file"
+              multiple={true}
+              accept="image/*,video/*"
+              className="hidden"
+              onChange={(e) => {
+                pick(e.target.files);
+                e.target.value = '';
+              }}
+            />
+          </label>
+        </div>
+      </div>
+      <div className="flex gap-[8px]">
+        <Button type="button" secondary={true} className="flex-1 rounded-[8px]" onClick={onClose}>
+          Vazgeç
+        </Button>
+        <Button
+          type="submit"
+          className="flex-1 rounded-[8px]"
+          loading={sending}
+          disabled={!title.trim() || !projectId || uploading}
+        >
+          {uploading ? 'Dosyalar yükleniyor...' : 'Gönder'}
+        </Button>
+      </div>
+    </form>
+  );
+};
+
+const RequestsTab: FC<{ me: PortalMe; projectId?: string }> = ({ me, projectId }) => {
+  const { data: requests, isLoading, mutate } = usePortalRequests();
+  const [creating, setCreating] = useState(false);
+  const list = (requests || []).filter((p) => !projectId || p.projectId === projectId);
+
+  return (
+    <div className="flex flex-col gap-[12px]">
+      {creating ? (
+        <RequestForm
+          me={me}
+          projectId={projectId}
+          onClose={() => setCreating(false)}
+          onSent={() => {
+            setCreating(false);
+            mutate();
+          }}
+        />
+      ) : (
+        <Button className="rounded-[10px] h-[48px]" onClick={() => setCreating(true)}>
+          + Yeni talep oluştur
+        </Button>
+      )}
+      {isLoading ? (
+        <div className="text-center text-textItemBlur py-[24px]">Yükleniyor...</div>
+      ) : !list.length ? (
+        !creating && (
+          <div className="bg-newBgColorInner rounded-[12px] p-[24px] text-center text-[15px] text-textItemBlur">
+            Paylaşılmasını istediğiniz bir şey mi var? Fotoğraflarıyla birlikte buradan iletin.
+          </div>
+        )
+      ) : (
+        list.map((request) => (
+          <div
+            key={request.id}
+            className="bg-newBgColorInner rounded-[12px] p-[14px] flex flex-col gap-[8px]"
+          >
+            <div className="flex items-start gap-[8px]">
+              <div className="flex flex-col min-w-0 flex-1">
+                <div className="text-[15px] font-[600] break-words">{request.title}</div>
+                <div className="text-[12px] text-textItemBlur">
+                  {me.projects.length > 1 ? `${request.projectName} · ` : ''}
+                  {formatDateTime(request.createdAt)}
+                </div>
+              </div>
+              <span
+                className={clsx(
+                  'text-[12px] px-[8px] py-[1px] rounded-[4px] shrink-0',
+                  REQUEST_STATUS[request.status][1]
+                )}
+              >
+                {REQUEST_STATUS[request.status][0]}
+              </span>
+            </div>
+            {!!request.description && (
+              <div className="text-[14px] whitespace-pre-wrap break-words">{request.description}</div>
+            )}
+            {!!request.wantedDate && (
+              <div className="text-[13px] text-textItemBlur">
+                İstenen tarih:{' '}
+                {new Date(request.wantedDate).toLocaleDateString('tr-TR', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </div>
+            )}
+            {!!request.media.length && (
+              <div className="flex gap-[6px] flex-wrap">
+                {request.media.map((media) => (
+                  <a key={media.id} href={media.path} target="_blank" rel="noopener noreferrer">
+                    {isVideo(media.path) && !media.thumbnail ? (
+                      <div className="w-[56px] h-[56px] rounded-[8px] bg-newBgColor flex items-center justify-center text-[11px] text-textItemBlur">
+                        Video
+                      </div>
+                    ) : (
+                      <img
+                        src={media.thumbnail || media.path}
+                        alt=""
+                        className="w-[56px] h-[56px] rounded-[8px] object-cover"
+                      />
+                    )}
+                  </a>
+                ))}
+              </div>
+            )}
+            {!!request.reply && (
+              <div className="bg-newBgColor rounded-[8px] p-[10px] text-[14px] whitespace-pre-wrap break-words">
+                <div className="text-[12px] text-textItemBlur mb-[2px]">{me.agency}</div>
+                {request.reply}
+              </div>
+            )}
+          </div>
+        ))
+      )}
+    </div>
+  );
+};
+
 const PortalHome: FC<{ me: PortalMe }> = ({ me }) => {
   const fetch = useFetch();
   const { data: approvals, mutate } = usePortalApprovals();
   const [projectId, setProjectId] = useState<string | undefined>(undefined);
-  const [tab, setTab] = useState<'approvals' | 'calendar' | 'projects' | ''>('');
+  const [tab, setTab] = useState<'approvals' | 'calendar' | 'requests' | 'projects' | ''>('');
   const [changingPassword, setChangingPassword] = useState(false);
 
   const filtered = (approvals || []).filter((p) => !projectId || p.projectId === projectId);
@@ -661,11 +958,12 @@ const PortalHome: FC<{ me: PortalMe }> = ({ me }) => {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-3 gap-[4px] bg-newBgColorInner rounded-[12px] p-[4px] sticky top-[8px] z-[10]">
+          <div className="grid grid-cols-4 gap-[4px] bg-newBgColorInner rounded-[12px] p-[4px] sticky top-[8px] z-[10]">
             {(
               [
                 ['approvals', 'Onaylar'],
                 ['calendar', 'Takvim'],
+                ['requests', 'Talepler'],
                 ['projects', 'Projeler'],
               ] as const
             ).map(([value, label]) => (
@@ -673,7 +971,7 @@ const PortalHome: FC<{ me: PortalMe }> = ({ me }) => {
                 key={value}
                 onClick={() => setTab(value)}
                 className={clsx(
-                  'h-[40px] rounded-[9px] flex items-center justify-center gap-[6px] cursor-pointer text-[14px]',
+                  'h-[40px] rounded-[9px] flex items-center justify-center gap-[4px] cursor-pointer text-[14px] mobile:text-[13px]',
                   current === value ? 'bg-[#612BD3] text-white' : 'hover:bg-boxHover'
                 )}
               >
@@ -696,6 +994,7 @@ const PortalHome: FC<{ me: PortalMe }> = ({ me }) => {
             <ApprovalsTab approvals={filtered} onAnswered={() => mutate()} />
           )}
           {current === 'calendar' && <CalendarTab me={me} projectId={projectId} />}
+          {current === 'requests' && <RequestsTab me={me} projectId={projectId} />}
           {current === 'projects' && <ProjectsTab me={me} projectId={projectId} />}
         </>
       )}

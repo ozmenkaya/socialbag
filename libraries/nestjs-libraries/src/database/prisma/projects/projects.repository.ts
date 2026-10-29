@@ -150,6 +150,32 @@ export class ProjectsRepository {
     });
   }
 
+  // the media folder the files of a customer request go to
+  getRequestFolder(org: string, id: string) {
+    return this._project.model.project.findFirst({
+      where: {
+        id,
+        organizationId: org,
+        deletedAt: null,
+      },
+      select: {
+        name: true,
+        folders: {
+          where: {
+            deletedAt: null,
+          },
+          orderBy: {
+            name: 'asc',
+          },
+          take: 1,
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+  }
+
   countProjects(org: string, ids: string[]) {
     return this._project.model.project.count({
       where: {

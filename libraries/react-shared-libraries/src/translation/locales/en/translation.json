@@ -1108,5 +1108,15 @@
   "client_credentials_hint": "Send these to the customer, the password is not shown again. It can be changed later from here or by the customer.",
   "client_credentials_message": "Hello {{name}}, you can follow your projects, the planned posts and the designs waiting for your approval here:\n{{url}}\nUsername: {{username}}\nPassword: {{password}}",
   "client_portal_address": "Address",
-  "send_on_whatsapp": "Send on WhatsApp"
+  "send_on_whatsapp": "Send on WhatsApp",
+  "customer_requests": "Customer requests",
+  "request_status_new": "New",
+  "request_status_in_progress": "In progress",
+  "request_status_done": "Done",
+  "request_save_failed": "Could not save the request",
+  "request_saved": "Saved, the customer sees it on the portal",
+  "request_files": "{{count}} files",
+  "request_wanted_date": "Wanted on {{date}}",
+  "request_reply_placeholder": "Reply to the customer (shown on the portal)",
+  "no_requests": "No requests"
 }

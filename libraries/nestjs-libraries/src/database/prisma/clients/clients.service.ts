@@ -14,6 +14,7 @@ import { ApprovalsService } from '@gitroom/nestjs-libraries/database/prisma/appr
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { ProjectsRepository } from '@gitroom/nestjs-libraries/database/prisma/projects/projects.repository';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
+import { RequestsService } from '@gitroom/nestjs-libraries/database/prisma/requests/requests.service';
 
 // signed apart from the sessions of the app, a session of the portal is never
 // read as the one of a user of the agency
@@ -44,7 +45,8 @@ export class ClientsService {
     private _clientsRepository: ClientsRepository,
     private _approvalsService: ApprovalsService,
     private _postsService: PostsService,
-    private _projectsRepository: ProjectsRepository
+    private _projectsRepository: ProjectsRepository,
+    private _requestsService: RequestsService
   ) {}
 
   getClients(org: string) {
@@ -295,6 +297,32 @@ export class ClientsService {
       action,
       note
     );
+  }
+
+  uploadFile(
+    client: PortalClient,
+    file: { filename: string; path: string; originalname: string }
+  ) {
+    return this._requestsService.saveUpload(client.organizationId, client.id, file);
+  }
+
+  createRequest(
+    client: PortalClient,
+    body: { projectId: string; title: string; description?: string; wantedDate?: string; mediaIds?: string[] }
+  ) {
+    return this._requestsService.createRequest(
+      client.organizationId,
+      { id: client.id, name: client.name, projectIds: this.projectIds(client) },
+      body
+    );
+  }
+
+  // the requests of the projects the customer follows, with the answers
+  getRequests(client: PortalClient) {
+    return this._requestsService.getRequests(client.organizationId, {
+      projectIds: this.projectIds(client),
+      take: 50,
+    });
   }
 
   // the session the password was changed from stays open (a new token for
