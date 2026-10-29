@@ -1,6 +1,6 @@
 'use client';
 
-import useSWR from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import { useCallback } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 
@@ -61,30 +61,48 @@ export const usePortalMe = () => {
     return response.ok ? ((await response.json()) as PortalMe) : null;
   }, [fetch]);
 
-  return useSWR('portal-me', load, { revalidateOnFocus: false });
+  return useSWR('portal-me', load);
+};
+
+// a session that ended while the panel was open goes back to signing in
+const useSignedOut = () => {
+  const { mutate } = useSWRConfig();
+  return useCallback(
+    (response: Response) => {
+      if (response.status === 401) {
+        mutate('portal-me');
+      }
+    },
+    [mutate]
+  );
 };
 
 // the posts planned or published between two dates
 export const usePortalPosts = (startDate: string, endDate: string, projectId?: string) => {
   const fetch = useFetch();
+  const signedOut = useSignedOut();
   const load = useCallback(async () => {
     const params = new URLSearchParams({ startDate, endDate });
     if (projectId) {
       params.set('projectId', projectId);
     }
     const response = await fetch(`/portal/posts?${params.toString()}`);
+    signedOut(response);
     return response.ok ? ((await response.json()) as PortalPost[]) : [];
-  }, [fetch, startDate, endDate, projectId]);
+  }, [fetch, signedOut, startDate, endDate, projectId]);
 
   return useSWR(`portal-posts-${startDate}-${endDate}-${projectId || ''}`, load);
 };
 
 export const usePortalApprovals = () => {
   const fetch = useFetch();
+  const signedOut = useSignedOut();
   const load = useCallback(async () => {
     const response = await fetch('/portal/approvals');
+    signedOut(response);
     return response.ok ? ((await response.json()) as PortalApproval[]) : [];
-  }, [fetch]);
+  }, [fetch, signedOut]);
 
-  return useSWR('portal-approvals', load, { refreshInterval: 60000 });
+  // looked at again when the customer comes back to the page
+  return useSWR('portal-approvals', load);
 };

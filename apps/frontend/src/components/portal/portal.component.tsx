@@ -583,7 +583,7 @@ const ProjectsTab: FC<{ me: PortalMe; projectId?: string }> = ({ me, projectId }
   </div>
 );
 
-const PortalHome: FC<{ me: PortalMe; onSignedOut: () => void }> = ({ me, onSignedOut }) => {
+const PortalHome: FC<{ me: PortalMe }> = ({ me }) => {
   const fetch = useFetch();
   const { data: approvals, mutate } = usePortalApprovals();
   const [projectId, setProjectId] = useState<string | undefined>(undefined);
@@ -601,10 +601,11 @@ const PortalHome: FC<{ me: PortalMe; onSignedOut: () => void }> = ({ me, onSigne
   const current = tab;
   const single = me.projects.length === 1 ? me.projects[0] : undefined;
 
+  // a fresh page, nothing of this customer stays for the next one
   const signOut = useCallback(async () => {
     await fetch('/public/portal/logout', { method: 'POST' });
-    onSignedOut();
-  }, [fetch, onSignedOut]);
+    window.location.href = '/musteri';
+  }, [fetch]);
 
   return (
     <div className="mx-auto w-full max-w-[720px] px-[16px] py-[20px] flex flex-col gap-[16px]">
@@ -717,5 +718,5 @@ export const PortalComponent = () => {
     return <PortalLogin onSignedIn={() => mutate()} />;
   }
 
-  return <PortalHome me={me} onSignedOut={() => mutate(null, { revalidate: false })} />;
+  return <PortalHome me={me} />;
 };

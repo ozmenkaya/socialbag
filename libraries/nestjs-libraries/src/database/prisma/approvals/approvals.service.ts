@@ -58,16 +58,19 @@ export class ApprovalsService {
       posts.push(post);
     }
 
-    // without a project, the one the channels belong to, so the design also
-    // waits on the customer portal of that project
+    // without a project, the one every channel of the posts posts for, so
+    // the design also waits on the customer portal of that project
     const projectId =
       body.projectId ||
       (await (async () => {
-        const projects = await this._projectsRepository.getProjectsOfIntegrations(
-          org,
-          [...new Set(posts.map((p) => p.integrationId!).filter((p) => p))]
+        const channels = [...new Set(posts.map((p) => p.integrationId!).filter((p) => p))];
+        const links = await this._projectsRepository.getProjectsOfIntegrations(org, channels);
+        const shared = [...new Set(links.map((p) => p.projectId))].filter((projectId) =>
+          channels.every((channel) =>
+            links.some((p) => p.projectId === projectId && p.integrationId === channel)
+          )
         );
-        return projects.length === 1 ? projects[0].id : undefined;
+        return shared.length === 1 ? shared[0] : undefined;
       })());
     const project = projectId
       ? await this._projectsRepository.getBrand(org, projectId)
@@ -217,7 +220,15 @@ export class ApprovalsService {
     if (!projectIds.length) {
       return [];
     }
-    const list = await this._approvalsRepository.getApprovalsOfProjects(org, projectIds);
+    const list = [
+      ...(await this._approvalsRepository.getApprovalsOfProjects(org, projectIds, ['pending'])),
+      ...(await this._approvalsRepository.getApprovalsOfProjects(
+        org,
+        projectIds,
+        ['approved', 'revision'],
+        20
+      )),
+    ];
     const approvals = [];
     for (const approval of list) {
       approvals.push(await this.present(approval));

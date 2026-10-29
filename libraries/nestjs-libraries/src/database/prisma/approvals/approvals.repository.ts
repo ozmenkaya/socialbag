@@ -48,17 +48,16 @@ export class ApprovalsRepository {
     return this._approval.model.postApproval.findUnique({ where: { id } });
   }
 
-  // the designs of the projects a customer follows on the portal: every one
-  // waiting and the latest answered ones
-  getApprovalsOfProjects(org: string, projectIds: string[]) {
+  // the designs of the projects a customer follows on the portal
+  getApprovalsOfProjects(org: string, projectIds: string[], status: string[], take?: number) {
     return this._approval.model.postApproval.findMany({
       where: {
         organizationId: org,
         projectId: { in: projectIds },
-        status: { in: ['pending', 'approved', 'revision'] },
+        status: { in: status },
       },
       orderBy: { createdAt: 'desc' },
-      take: 60,
+      ...(take ? { take } : {}),
     });
   }
 

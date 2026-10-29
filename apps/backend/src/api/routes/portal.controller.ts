@@ -1,29 +1,13 @@
 import { Body, Controller, Get, Param, Post, Query, Req, Res } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
-import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
 import { ClientsService } from '@gitroom/nestjs-libraries/database/prisma/clients/clients.service';
 import {
   PortalAnswerDto,
   PortalPasswordDto,
   PortalPostsQueryDto,
 } from '@gitroom/nestjs-libraries/dtos/clients/client.dto';
-import { PORTAL_COOKIE } from '@gitroom/backend/services/auth/portal.auth.middleware';
-
-// without expires the session ends when the browser is closed
-export const setPortalCookie = (response: Response, token: string, expires?: Date) => {
-  response.cookie(PORTAL_COOKIE, token, {
-    domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-    ...(!process.env.NOT_SECURED
-      ? {
-          secure: true,
-          httpOnly: true,
-          sameSite: 'none',
-        }
-      : {}),
-    ...(expires ? { expires } : {}),
-  });
-};
+import { setPortalCookie } from '@gitroom/backend/services/auth/portal.auth.middleware';
 
 // What a signed in customer sees of the projects given to them (signing in
 // and out is in the public controller)

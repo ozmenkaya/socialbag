@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { sign, verify } from 'jsonwebtoken';
 import dayjs from 'dayjs';
@@ -6,6 +12,8 @@ import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { ClientsRepository } from '@gitroom/nestjs-libraries/database/prisma/clients/clients.repository';
 import { ApprovalsService } from '@gitroom/nestjs-libraries/database/prisma/approvals/approvals.service';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
+import { ProjectsRepository } from '@gitroom/nestjs-libraries/database/prisma/projects/projects.repository';
+import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 
 // signed apart from the sessions of the app, a session of the portal is never
 // read as the one of a user of the agency
@@ -13,6 +21,8 @@ const portalSecret = () => `${process.env.JWT_SECRET}:customer-portal`;
 // compared against when the username does not exist, so both answer as slowly
 const MISSING_HASH = AuthService.hashPassword(randomBytes(16).toString('hex'));
 export const PORTAL_REMEMBER_DAYS = 30;
+// wrong passwords an account takes in 15 minutes, from wherever they come
+const MAX_ATTEMPTS = 10;
 
 export type PortalClient = NonNullable<
   Awaited<ReturnType<ClientsRepository['getPortalClient']>>
@@ -33,7 +43,8 @@ export class ClientsService {
   constructor(
     private _clientsRepository: ClientsRepository,
     private _approvalsService: ApprovalsService,
-    private _postsService: PostsService
+    private _postsService: PostsService,
+    private _projectsRepository: ProjectsRepository
   ) {}
 
   getClients(org: string) {
@@ -68,7 +79,7 @@ export class ClientsService {
     }
 
     const projectIds = [...new Set(body.projectIds)];
-    if ((await this._clientsRepository.countProjects(org, projectIds)) !== projectIds.length) {
+    if ((await this._projectsRepository.countProjects(org, projectIds)) !== projectIds.length) {
       throw new BadRequestException('Project not found');
     }
 
@@ -129,17 +140,36 @@ export class ClientsService {
   // the session of the portal: 30 days with "remember me", otherwise until
   // the browser is closed (the token itself still ends after a day)
   async login(username: string, password: string, remember: boolean) {
-    const client = await this._clientsRepository.getLogin(username.trim().toLowerCase());
+    const name = username.trim().toLowerCase();
+    const attempts = `portal-login:${name}`;
+    await this.checkAttempts(attempts);
+    const client = await this._clientsRepository.getLogin(name);
     const valid = AuthService.comparePassword(password, client?.password || MISSING_HASH);
     if (!client || !valid) {
+      await this.failedAttempt(attempts);
       throw new BadRequestException('Kullanıcı adı ya da şifre hatalı');
     }
 
+    await ioRedis.del(attempts);
     await this._clientsRepository.setLastLogin(client.id);
     return {
       token: this.sign(client.id, client.sessionVersion, remember),
       expires: remember ? dayjs().add(PORTAL_REMEMBER_DAYS, 'day').toDate() : undefined,
     };
+  }
+
+  private async checkAttempts(key: string) {
+    if (Number((await ioRedis.get(key)) || 0) >= MAX_ATTEMPTS) {
+      throw new HttpException(
+        'Çok fazla hatalı deneme yapıldı, 15 dakika sonra tekrar deneyin',
+        HttpStatus.TOO_MANY_REQUESTS
+      );
+    }
+  }
+
+  private async failedAttempt(key: string) {
+    const count = Number((await ioRedis.get(key)) || 0) + 1;
+    await ioRedis.set(key, String(count), 'EX', 900);
   }
 
   private sign(id: string, version: number, remember: boolean) {
@@ -275,9 +305,14 @@ export class ClientsService {
     current: string,
     password: string
   ) {
-    if (!AuthService.comparePassword(current, client.password)) {
+    const attempts = `portal-password:${client.id}`;
+    await this.checkAttempts(attempts);
+    const stored = await this._clientsRepository.getPassword(client.id);
+    if (!stored || !AuthService.comparePassword(current, stored.password)) {
+      await this.failedAttempt(attempts);
       throw new BadRequestException('Mevcut şifre hatalı');
     }
+    await ioRedis.del(attempts);
     if (password.length < 6) {
       throw new BadRequestException('Yeni şifre en az 6 karakter olmalı');
     }

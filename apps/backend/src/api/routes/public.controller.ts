@@ -34,7 +34,7 @@ import { ThrottlerRealIpGuard } from '@gitroom/nestjs-libraries/throttler/thrott
 import { Throttle } from '@nestjs/throttler';
 import { ClientsService } from '@gitroom/nestjs-libraries/database/prisma/clients/clients.service';
 import { PortalLoginDto } from '@gitroom/nestjs-libraries/dtos/clients/client.dto';
-import { setPortalCookie } from '@gitroom/backend/api/routes/portal.controller';
+import { setPortalCookie } from '@gitroom/backend/services/auth/portal.auth.middleware';
 
 const pump = promisify(pipeline);
 

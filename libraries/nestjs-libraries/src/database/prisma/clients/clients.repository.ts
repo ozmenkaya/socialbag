@@ -9,7 +9,6 @@ export class ClientsRepository {
   constructor(
     private _client: PrismaRepository<'projectClient'>,
     private _clientProject: PrismaRepository<'projectClientProject'>,
-    private _project: PrismaRepository<'project'>,
     private _transaction: PrismaTransaction
   ) {}
 
@@ -63,16 +62,6 @@ export class ClientsRepository {
       where: {
         username,
         ...(exceptId ? { id: { not: exceptId } } : {}),
-      },
-    });
-  }
-
-  countProjects(org: string, ids: string[]) {
-    return this._project.model.project.count({
-      where: {
-        id: { in: ids },
-        organizationId: org,
-        deletedAt: null,
       },
     });
   }
@@ -151,6 +140,13 @@ export class ClientsRepository {
     });
   }
 
+  getPassword(id: string) {
+    return this._client.model.projectClient.findUnique({
+      where: { id },
+      select: { password: true },
+    });
+  }
+
   setPassword(id: string, password: string) {
     return this._client.model.projectClient.update({
       where: { id },
@@ -168,7 +164,6 @@ export class ClientsRepository {
         organizationId: true,
         name: true,
         username: true,
-        password: true,
         sessionVersion: true,
         organization: {
           select: {
