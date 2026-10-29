@@ -16,6 +16,7 @@ export interface ProjectItem {
     accent?: string;
     font?: 'modern' | 'elegant';
     contact?: string;
+    approvalPhone?: string;
   };
   integrations: {
     id: string;

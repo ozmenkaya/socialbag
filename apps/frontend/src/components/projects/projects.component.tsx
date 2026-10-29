@@ -102,6 +102,9 @@ const ProjectModal: FC<{
   const [accent, setAccent] = useState(project?.brand.accent || '');
   const [font, setFont] = useState(project?.brand.font || '');
   const [contact, setContact] = useState(project?.brand.contact || '');
+  const [approvalPhone, setApprovalPhone] = useState(
+    project?.brand.approvalPhone || ''
+  );
   const [saving, setSaving] = useState(false);
 
   const chooseLogo = useCallback(() => {
@@ -141,6 +144,7 @@ const ProjectModal: FC<{
           ...(accent ? { accent } : {}),
           ...(font ? { font } : {}),
           contact,
+          approvalPhone,
         },
       }),
     });
@@ -154,7 +158,7 @@ const ProjectModal: FC<{
     }
     onSaved();
     modals.closeCurrent();
-  }, [fetch, project, name, description, channels, selectedFolders, drive, logo, primary, accent, font, contact, onSaved, modals, toaster, t]);
+  }, [fetch, project, name, description, channels, selectedFolders, drive, logo, primary, accent, font, contact, approvalPhone, onSaved, modals, toaster, t]);
 
   return (
     <div className="flex flex-col gap-[16px]">
@@ -319,6 +323,22 @@ const ProjectModal: FC<{
           maxLength={120}
           onChange={(e) => setContact(e.target.value)}
           placeholder={t('brand_contact_placeholder', 'Contact line: phone · website')}
+          className={`${inputClass} h-[44px]`}
+        />
+      </div>
+      <div className="flex flex-col gap-[8px]">
+        <div className="text-[14px]">{t('project_approval', 'Customer approval')}</div>
+        <div className="text-[12px] text-textItemBlur">
+          {t(
+            'project_approval_hint',
+            'Before a design of this project is published, an approval link is sent to this WhatsApp number. The post goes out once the customer approves it.'
+          )}
+        </div>
+        <input
+          value={approvalPhone}
+          maxLength={30}
+          onChange={(e) => setApprovalPhone(e.target.value)}
+          placeholder={t('approval_phone_placeholder', 'WhatsApp number: +90 5xx xxx xx xx')}
           className={`${inputClass} h-[44px]`}
         />
       </div>

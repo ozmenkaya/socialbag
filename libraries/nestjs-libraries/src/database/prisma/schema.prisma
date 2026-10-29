@@ -692,6 +692,26 @@ model Post {
   @@index([integrationId])
 }
 
+// Posts held as drafts until the customer approves them from the link sent on
+// WhatsApp, they are scheduled once approved
+model PostApproval {
+  id             String    @id @default(uuid())
+  organizationId String
+  projectId      String?
+  // the secret of the link, the customer opens it without signing in
+  token          String    @unique
+  // main posts (one per channel) that go out together once approved
+  postIds        String[]
+  phone          String?
+  // pending, approved or revision (with the customer's note)
+  status         String    @default("pending")
+  note           String?
+  respondedAt    DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([organizationId])
+}
+
 model Notifications {
   id             String       @id @default(uuid())
   organizationId String

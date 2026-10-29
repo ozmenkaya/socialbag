@@ -8,6 +8,7 @@ import {
   Req,
   Res,
   StreamableFile,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
@@ -27,6 +28,10 @@ import { OnlyURL } from '@gitroom/nestjs-libraries/dtos/webhooks/webhooks.dto';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { CreatePublicCommentDto } from '@gitroom/nestjs-libraries/dtos/comments/add.comment.dto';
+import { ApprovalsService } from '@gitroom/nestjs-libraries/database/prisma/approvals/approvals.service';
+import { ApprovalAnswerDto } from '@gitroom/nestjs-libraries/dtos/approvals/approval.dto';
+import { ThrottlerRealIpGuard } from '@gitroom/nestjs-libraries/throttler/throttler.provider';
+import { Throttle } from '@nestjs/throttler';
 
 const pump = promisify(pipeline);
 
@@ -37,7 +42,8 @@ export class PublicController {
     private _trackService: TrackService,
     private _agentGraphInsertService: AgentGraphInsertService,
     private _postsService: PostsService,
-    private _subscriptionService: SubscriptionService
+    private _subscriptionService: SubscriptionService,
+    private _approvalsService: ApprovalsService
   ) {}
   @Post('/agent')
   async createAgent(@Body() body: { text: string; apiKey: string }) {
@@ -85,6 +91,22 @@ export class PublicController {
     @RealIP() ip: string
   ) {
     return this._postsService.createPublicComment(postId, body, null, ip);
+  }
+
+  // the design the customer approves from the link sent on WhatsApp
+  @Get(`/approvals/:token`)
+  async getApproval(@Param('token') token: string) {
+    return this._approvalsService.getPublic(token);
+  }
+
+  @UseGuards(ThrottlerRealIpGuard)
+  @Throttle({ default: { limit: 30, ttl: 3600000 } })
+  @Post(`/approvals/:token`)
+  async answerApproval(
+    @Param('token') token: string,
+    @Body() body: ApprovalAnswerDto
+  ) {
+    return this._approvalsService.respond(token, body.action, body.note);
   }
 
   @Post('/t')

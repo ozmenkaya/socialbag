@@ -31,6 +31,8 @@ import { MediaViewTool } from '@gitroom/nestjs-libraries/chat/tools/media.view.t
 import { DesignTemplateTool } from '@gitroom/nestjs-libraries/chat/tools/design.template.tool';
 import { DesignVideoTool } from '@gitroom/nestjs-libraries/chat/tools/design.video.tool';
 import { DesignVideoStatusTool } from '@gitroom/nestjs-libraries/chat/tools/design.video.status.tool';
+import { ApprovalRequestTool } from '@gitroom/nestjs-libraries/chat/tools/approval.request.tool';
+import { ApprovalStatusTool } from '@gitroom/nestjs-libraries/chat/tools/approval.status.tool';
 
 export const toolList = [
   IntegrationListTool,
@@ -41,6 +43,8 @@ export const toolList = [
   PostsListTool,
   PostSettingsTool,
   DeletePostTool,
+  ApprovalRequestTool,
+  ApprovalStatusTool,
   GenerateVideoOptionsTool,
   VideoFunctionTool,
   GenerateVideoTool,

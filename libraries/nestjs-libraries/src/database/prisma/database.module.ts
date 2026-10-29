@@ -59,6 +59,8 @@ import { LumaService } from '@gitroom/nestjs-libraries/openai/luma.service';
 import { MediaAutoPostService } from '@gitroom/nestjs-libraries/database/prisma/media/media.autopost.service';
 import { ProjectsRepository } from '@gitroom/nestjs-libraries/database/prisma/projects/projects.repository';
 import { ProjectsService } from '@gitroom/nestjs-libraries/database/prisma/projects/projects.service';
+import { ApprovalsRepository } from '@gitroom/nestjs-libraries/database/prisma/approvals/approvals.repository';
+import { ApprovalsService } from '@gitroom/nestjs-libraries/database/prisma/approvals/approvals.service';
 import { GoogleDriveService } from '@gitroom/nestjs-libraries/google-drive/google.drive.service';
 import { DesignTemplatesService } from '@gitroom/nestjs-libraries/design-templates/design.templates.service';
 
@@ -129,6 +131,8 @@ import { DesignTemplatesService } from '@gitroom/nestjs-libraries/design-templat
     MediaAutoPostService,
     ProjectsRepository,
     ProjectsService,
+    ApprovalsRepository,
+    ApprovalsService,
     GoogleDriveService,
     DesignTemplatesService,
   ],

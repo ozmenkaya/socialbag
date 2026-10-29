@@ -38,6 +38,12 @@ export class ProjectBrandDto {
   @IsString()
   @MaxLength(120)
   contact?: string;
+
+  // the customer's WhatsApp number the designs are sent to for approval
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  approvalPhone?: string;
 }
 
 // The whole project at once: the lists replace what was linked before

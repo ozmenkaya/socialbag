@@ -14,6 +14,8 @@ export interface ProjectBrand {
   accent?: string;
   font?: 'modern' | 'elegant';
   contact?: string;
+  // the customer's WhatsApp number the designs are sent to for approval
+  approvalPhone?: string;
 }
 
 export interface ProjectData {

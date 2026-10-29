@@ -68,6 +68,16 @@ const isStale = (source: { status: string; syncStartedAt: Date | null }) =>
   source.status === 'syncing' &&
   (!source.syncStartedAt || Date.now() - source.syncStartedAt.getTime() > SYNC_TIMEOUT);
 
+// digits only with the country code, the way wa.me takes it (a Turkish
+// number written as 0xxx or 5xx gets 90 in front)
+export const whatsappNumber = (phone?: string) => {
+  const digits = (phone || '').replace(/\D/g, '').replace(/^00/, '');
+  if (/^0[1-9]\d{9}$/.test(digits) || /^5\d{9}$/.test(digits)) {
+    return '90' + digits.replace(/^0/, '');
+  }
+  return digits.length >= 8 ? digits : '';
+};
+
 @Injectable()
 export class ProjectsService {
   // sources being synced by this process
@@ -461,6 +471,9 @@ export class ProjectsService {
       ...(brand.accent ? { accent: brand.accent.toUpperCase() } : {}),
       ...(brand.font ? { font: brand.font } : {}),
       ...(brand.contact?.trim() ? { contact: brand.contact.trim() } : {}),
+      ...(whatsappNumber(brand.approvalPhone)
+        ? { approvalPhone: whatsappNumber(brand.approvalPhone) }
+        : {}),
     };
   }
 

@@ -1079,5 +1079,8 @@
   "brand_accent": "Vurgu rengi",
   "font_modern": "Modern (Montserrat)",
   "font_elegant": "Zarif (Playfair Display)",
-  "brand_contact_placeholder": "İletişim satırı: telefon · web sitesi"
+  "brand_contact_placeholder": "İletişim satırı: telefon · web sitesi",
+  "project_approval": "Müşteri onayı",
+  "project_approval_hint": "Bu projenin bir tasarımı yayınlanmadan önce bu WhatsApp numarasına onay linki gönderilir. Gönderi, müşteri onayladıktan sonra yayınlanır.",
+  "approval_phone_placeholder": "WhatsApp numarası: +90 5xx xxx xx xx"
 }
