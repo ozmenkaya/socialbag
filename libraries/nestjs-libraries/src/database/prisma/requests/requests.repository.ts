@@ -42,11 +42,12 @@ export class RequestsRepository {
 
   getRequests(
     org: string,
-    query: { projectIds?: string[]; status?: string; take: number }
+    query: { projectIds?: string[]; status?: string; requestId?: string; take: number }
   ) {
     return this._request.model.projectRequest.findMany({
       where: {
         organizationId: org,
+        ...(query.requestId ? { id: query.requestId } : {}),
         ...(query.projectIds ? { projectId: { in: query.projectIds } } : {}),
         ...(query.status ? { status: query.status } : {}),
         project: {

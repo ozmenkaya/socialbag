@@ -48,3 +48,13 @@ export class ThrottlerRealIpGuard extends ThrottlerGuard {
     return forwarded.split(',')[0].trim() || req.ip;
   }
 }
+
+// route-level guard for the routes of the customer portal, keyed by the
+// signed in customer (set by the portal session check) rather than an
+// address the client can choose
+@Injectable()
+export class ThrottlerPortalClientGuard extends ThrottlerGuard {
+  protected override async getTracker(req: Record<string, any>): Promise<string> {
+    return 'portal_' + (req.portalClient?.id || 'unknown');
+  }
+}

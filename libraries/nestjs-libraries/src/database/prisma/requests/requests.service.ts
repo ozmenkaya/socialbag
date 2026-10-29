@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import dayjs from 'dayjs';
 import { RequestsRepository } from '@gitroom/nestjs-libraries/database/prisma/requests/requests.repository';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
@@ -27,7 +27,8 @@ export class RequestsService {
     clientId: string,
     file: { filename: string; path: string; originalname: string }
   ) {
-    const media = await this._mediaService.saveFile(
+    // normalized like the uploads of the media library, before it is posted
+    const media = await this._mediaService.saveUploadedFile(
       org,
       file.filename,
       file.path,
@@ -36,6 +37,19 @@ export class RequestsService {
     await ioRedis.rpush(uploadsKey(clientId), media.id);
     await ioRedis.expire(uploadsKey(clientId), 86400);
     return { id: media.id, path: media.path, name: file.originalname };
+  }
+
+  private async uploadsOf(clientId: string): Promise<string[]> {
+    return (await ioRedis.lrange(uploadsKey(clientId), 0, -1)) || [];
+  }
+
+  // a file removed from the form before the request was sent
+  async removeUpload(org: string, clientId: string, mediaId: string) {
+    if (!(await this.uploadsOf(clientId)).includes(mediaId)) {
+      throw new NotFoundException('File not found');
+    }
+    await this._mediaService.deleteMedia(org, mediaId);
+    return { id: mediaId };
   }
 
   async createRequest(
@@ -47,7 +61,7 @@ export class RequestsService {
       throw new NotFoundException('Project not found');
     }
 
-    const uploads: string[] = (await ioRedis.lrange(uploadsKey(client.id), 0, -1)) || [];
+    const uploads = await this.uploadsOf(client.id);
     const mediaIds = [...new Set(body.mediaIds || [])];
     if (mediaIds.some((p) => !uploads.includes(p))) {
       throw new BadRequestException('Dosyaları tekrar yükleyin');
@@ -65,30 +79,37 @@ export class RequestsService {
       mediaIds,
     });
 
-    // next to the other media of the project
-    const project = await this._projectsRepository.getRequestFolder(org, body.projectId);
-    if (mediaIds.length && project?.folders[0]) {
-      await this._mediaService.moveMedia(org, {
-        media: mediaIds,
-        folderId: project.folders[0].id,
-      });
-    }
+    // the request is saved, what follows must not make the customer send it
+    // again
+    try {
+      // next to the other media of the project
+      const project = await this._projectsRepository.getRequestFolder(org, body.projectId);
+      if (mediaIds.length && project?.folders[0]) {
+        await this._mediaService.moveMedia(org, {
+          media: mediaIds,
+          folderId: project.folders[0].id,
+        });
+      }
 
-    await this._notificationService.inAppNotification(
-      org,
-      'Yeni müşteri talebi',
-      `${project?.name ? `${project.name}: ` : ''}${client.name} bir talep gönderdi: "${body.title.trim()}"${
-        mediaIds.length ? ` (${mediaIds.length} dosya)` : ''
-      }`,
-      true
-    );
+      // the customer's words also go into an email, without markup
+      await this._notificationService.inAppNotification(
+        org,
+        'Yeni müşteri talebi',
+        `${project?.name ? `${project.name}: ` : ''}${client.name} bir talep gönderdi: "${body.title
+          .trim()
+          .replace(/[<>]/g, '')}"${mediaIds.length ? ` (${mediaIds.length} dosya)` : ''}`,
+        true
+      );
+    } catch (err) {
+      Logger.error(`Customer request ${request.id} saved, but: ${err}`);
+    }
 
     return { id: request.id };
   }
 
   async getRequests(
     org: string,
-    query: { projectIds?: string[]; status?: string; take?: number }
+    query: { projectIds?: string[]; status?: string; requestId?: string; take?: number }
   ) {
     const list = await this._requestsRepository.getRequests(org, {
       ...query,

@@ -306,6 +306,10 @@ export class ClientsService {
     return this._requestsService.saveUpload(client.organizationId, client.id, file);
   }
 
+  removeUpload(client: PortalClient, mediaId: string) {
+    return this._requestsService.removeUpload(client.organizationId, client.id, mediaId);
+  }
+
   createRequest(
     client: PortalClient,
     body: { projectId: string; title: string; description?: string; wantedDate?: string; mediaIds?: string[] }

@@ -633,9 +633,14 @@ const RequestForm: FC<{
           () => undefined
         );
         if (!response?.ok) {
+          const message = response ? await errorMessage(response, '') : '';
           toaster.show(
-            response
-              ? await errorMessage(response, `${file.name} yüklenemedi`)
+            /unsupported/i.test(message)
+              ? `${file.name}: bu dosya türü desteklenmiyor (fotoğraf ya da MP4 video gönderin)`
+              : /too large/i.test(message)
+              ? `${file.name} çok büyük (fotoğraf en fazla 10 MB, video 1 GB)`
+              : response?.status === 429
+              ? 'Çok fazla dosya yüklendi, biraz sonra tekrar deneyin'
               : `${file.name} yüklenemedi`,
             'warning'
           );
@@ -649,6 +654,17 @@ const RequestForm: FC<{
       }
     },
     [fetch, toaster]
+  );
+
+  // a file taken back is removed from the server too
+  const remove = useCallback(
+    (file: RequestFile) => () => {
+      setFiles((prev) => prev.filter((p) => p.key !== file.key));
+      if (file.media) {
+        fetch(`/portal/upload/${file.media.id}`, { method: 'DELETE' });
+      }
+    },
+    [fetch]
   );
 
   const send = useCallback(
@@ -742,7 +758,7 @@ const RequestForm: FC<{
               )}
               {(!!file.media || file.failed) && (
                 <div
-                  onClick={() => setFiles((prev) => prev.filter((p) => p.key !== file.key))}
+                  onClick={remove(file)}
                   className="absolute top-[2px] end-[2px] w-[20px] h-[20px] rounded-full bg-black/60 text-white text-[12px] flex items-center justify-center cursor-pointer"
                 >
                   ×

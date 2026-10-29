@@ -291,7 +291,8 @@ export class ApprovalsService {
       await this._notificationService.inAppNotification(
         org,
         'Müşteri düzeltme istedi',
-        `${name}Müşteri tasarımda düzeltme istedi: "${note!.trim()}"`,
+        // the customer's words also go into an email, without markup
+        `${name}Müşteri tasarımda düzeltme istedi: "${note!.trim().replace(/[<>]/g, '')}"`,
         true
       );
       return { status: 'revision' };

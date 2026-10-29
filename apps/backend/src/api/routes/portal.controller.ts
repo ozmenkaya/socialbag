@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -15,7 +16,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { streamUploadOptions } from '@gitroom/nestjs-libraries/upload/multer.stream.engine';
-import { ThrottlerRealIpGuard } from '@gitroom/nestjs-libraries/throttler/throttler.provider';
+import { ThrottlerPortalClientGuard } from '@gitroom/nestjs-libraries/throttler/throttler.provider';
 import { Request, Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
 import { ClientsService } from '@gitroom/nestjs-libraries/database/prisma/clients/clients.service';
@@ -63,10 +64,10 @@ export class PortalController {
     );
   }
 
-  // a photo or video for a request, the session is checked before anything
-  // is streamed to storage
-  @UseGuards(ThrottlerRealIpGuard)
-  @Throttle({ default: { limit: 100, ttl: 3600000 } })
+  // a photo or video for a request, the session is checked (and the guard
+  // counts the customer's uploads) before anything is streamed to storage
+  @UseGuards(ThrottlerPortalClientGuard)
+  @Throttle({ default: { limit: 60, ttl: 3600000 } })
   @Post('/upload')
   @UseInterceptors(FileInterceptor('file', streamUploadOptions()))
   upload(@Req() req: Request, @UploadedFile() file: Express.Multer.File) {
@@ -77,13 +78,20 @@ export class PortalController {
     return this._clientsService.uploadFile(req.portalClient, file);
   }
 
+  // a file the customer took back before sending the request
+  @Delete('/upload/:mediaId')
+  removeUpload(@Req() req: Request, @Param('mediaId') mediaId: string) {
+    // @ts-ignore
+    return this._clientsService.removeUpload(req.portalClient, mediaId);
+  }
+
   @Get('/requests')
   requests(@Req() req: Request) {
     // @ts-ignore
     return this._clientsService.getRequests(req.portalClient);
   }
 
-  @UseGuards(ThrottlerRealIpGuard)
+  @UseGuards(ThrottlerPortalClientGuard)
   @Throttle({ default: { limit: 30, ttl: 3600000 } })
   @Post('/requests')
   createRequest(@Req() req: Request, @Body() body: PortalRequestDto) {
