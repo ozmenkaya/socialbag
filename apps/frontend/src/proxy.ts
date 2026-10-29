@@ -46,6 +46,9 @@ export async function proxy(request: NextRequest) {
   if (
     nextUrl.pathname.startsWith('/uploads/') ||
     nextUrl.pathname.startsWith('/p/') ||
+    // the customer portal signs its customers in itself
+    nextUrl.pathname === '/musteri' ||
+    nextUrl.pathname.startsWith('/musteri/') ||
     nextUrl.pathname.startsWith('/legal/') ||
     nextUrl.pathname.startsWith('/provider/') ||
     nextUrl.pathname.startsWith('/icons/') ||

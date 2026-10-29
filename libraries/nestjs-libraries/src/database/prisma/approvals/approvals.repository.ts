@@ -44,6 +44,24 @@ export class ApprovalsRepository {
     });
   }
 
+  getById(id: string) {
+    return this._approval.model.postApproval.findUnique({ where: { id } });
+  }
+
+  // the designs of the projects a customer follows on the portal: every one
+  // waiting and the latest answered ones
+  getApprovalsOfProjects(org: string, projectIds: string[]) {
+    return this._approval.model.postApproval.findMany({
+      where: {
+        organizationId: org,
+        projectId: { in: projectIds },
+        status: { in: ['pending', 'approved', 'revision'] },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 60,
+    });
+  }
+
   getApprovals(org: string, status?: string, postId?: string) {
     return this._approval.model.postApproval.findMany({
       where: {

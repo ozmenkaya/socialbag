@@ -5,12 +5,14 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { Button } from '@gitroom/react/form/button';
 
-// the customer approves the design or writes what should change
+// the customer approves the design or writes what should change, from the
+// link sent on WhatsApp or from the customer portal (url)
 export const ApprovalAnswerClient: FC<{
-  token: string;
+  url: string;
   status: string;
   note?: string | null;
-}> = ({ token, status: initialStatus, note: initialNote }) => {
+  onAnswered?: () => void;
+}> = ({ url, status: initialStatus, note: initialNote, onAnswered }) => {
   const fetch = useFetch();
   const toaster = useToaster();
   const [status, setStatus] = useState(initialStatus);
@@ -24,7 +26,7 @@ export const ApprovalAnswerClient: FC<{
         return;
       }
       setSending(action);
-      const response = await fetch(`/public/approvals/${encodeURIComponent(token)}`, {
+      const response = await fetch(url, {
         method: 'POST',
         body: JSON.stringify({
           action,
@@ -41,8 +43,9 @@ export const ApprovalAnswerClient: FC<{
         return;
       }
       setStatus(action === 'approve' ? 'approved' : 'revision');
+      onAnswered?.();
     },
-    [fetch, token, note, toaster]
+    [fetch, url, note, toaster, onAnswered]
   );
 
   if (status === 'approved') {

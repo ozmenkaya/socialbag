@@ -105,3 +105,22 @@ export const useProjectFiles = (
     folders?: ProjectFolderItem[];
   }>(`project-files-${projectId}-${kind}-${search}-${folder}-${page}`, load);
 };
+
+export interface ProjectClientItem {
+  id: string;
+  name: string;
+  username: string;
+  lastLoginAt: string | null;
+  createdAt: string;
+  projects: { id: string; name: string }[];
+}
+
+// the customers who sign in to the customer portal
+export const useProjectClients = () => {
+  const fetch = useFetch();
+  const load = useCallback(async () => {
+    return (await fetch('/projects/clients')).json();
+  }, [fetch]);
+
+  return useSWR<ProjectClientItem[]>('project-clients', load);
+};

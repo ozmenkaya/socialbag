@@ -50,6 +50,7 @@ model Organization {
   postBoosts          PostBoost[]
   mediaFolders        MediaFolder[]
   projects            Project[]
+  projectClients      ProjectClient[]
   projectFiles        ProjectFile[]
 
   @@index([apiKey])
@@ -296,9 +297,40 @@ model Project {
   folders        MediaFolder[]
   sources        ProjectSource[]
   files          ProjectFile[]
+  clients        ProjectClientProject[]
 
   @@index([organizationId])
   @@index([deletedAt])
+}
+
+// A customer of the agency who signs in to the customer portal (/musteri) to
+// follow the projects given to them and answer the designs sent for approval
+model ProjectClient {
+  id             String                 @id @default(uuid())
+  organizationId String
+  name           String
+  // unique across organizations: the portal login does not know the agency
+  username       String                 @unique
+  password       String
+  // raised when the password changes, it signs every open session out
+  sessionVersion Int                    @default(0)
+  lastLoginAt    DateTime?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  organization   Organization           @relation(fields: [organizationId], references: [id])
+  projects       ProjectClientProject[]
+
+  @@index([organizationId])
+}
+
+model ProjectClientProject {
+  clientId  String
+  projectId String
+  client    ProjectClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  project   Project       @relation(fields: [projectId], references: [id])
+
+  @@id([clientId, projectId])
+  @@index([projectId])
 }
 
 // A channel can post for several projects of the same customer

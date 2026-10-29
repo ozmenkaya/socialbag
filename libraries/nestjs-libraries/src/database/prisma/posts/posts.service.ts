@@ -491,6 +491,10 @@ export class PostsService {
     return this._postRepository.getPosts(orgId, query);
   }
 
+  getChannelPosts(orgId: string, integrationIds: string[], startDate: Date, endDate: Date) {
+    return this._postRepository.getChannelPosts(orgId, integrationIds, startDate, endDate);
+  }
+
   async getPostsMinified(orgId: string, query: GetPostsDto) {
     return minifyPosts({
       posts: await this._postRepository.getPosts(orgId, query),

@@ -60,6 +60,8 @@ import { StripeController } from '@gitroom/backend/api/routes/stripe.controller'
 import { AdsController } from '@gitroom/backend/api/routes/ads.controller';
 import { MediaFoldersController } from '@gitroom/backend/api/routes/media.folders.controller';
 import { ProjectsController } from '@gitroom/backend/api/routes/projects.controller';
+import { PortalController } from '@gitroom/backend/api/routes/portal.controller';
+import { PortalAuthMiddleware } from '@gitroom/backend/services/auth/portal.auth.middleware';
 
 const authenticatedController = [
   UsersController,
@@ -108,6 +110,7 @@ const authenticatedController = [
         OAuthController,
         MediaWidgetController,
         ClippingWidgetController,
+        PortalController,
         ...authenticatedController,
       ],
   providers: [
@@ -120,6 +123,7 @@ const authenticatedController = [
     ExtractContentService,
     AuthMiddleware,
     UploadWidgetAuthMiddleware,
+    PortalAuthMiddleware,
     PoliciesGuard,
     PermissionsService,
     CodesService,
@@ -142,6 +146,7 @@ export class ApiModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(AuthMiddleware).forRoutes(...authenticatedController);
     consumer.apply(UploadWidgetAuthMiddleware).forRoutes(MediaWidgetController);
+    consumer.apply(PortalAuthMiddleware).forRoutes(PortalController);
     consumer
       .apply(ClippingWidgetAuthMiddleware)
       .forRoutes(ClippingWidgetController);

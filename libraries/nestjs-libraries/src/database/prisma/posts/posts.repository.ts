@@ -1227,4 +1227,44 @@ export class PostsRepository {
       },
     });
   }
+
+  // what the customer portal shows of a project: the posts planned or
+  // published on its channels, drafts stay with the agency
+  getChannelPosts(orgId: string, integrationIds: string[], startDate: Date, endDate: Date) {
+    return this._post.model.post.findMany({
+      where: {
+        organizationId: orgId,
+        integrationId: { in: integrationIds },
+        state: { in: ['QUEUE', 'PUBLISHED'] },
+        publishDate: {
+          gte: startDate,
+          lte: endDate,
+        },
+        deletedAt: null,
+        parentPostId: null,
+        integration: {
+          deletedAt: null,
+        },
+      },
+      orderBy: {
+        publishDate: 'asc',
+      },
+      select: {
+        id: true,
+        content: true,
+        image: true,
+        publishDate: true,
+        releaseURL: true,
+        state: true,
+        integration: {
+          select: {
+            id: true,
+            name: true,
+            providerIdentifier: true,
+            picture: true,
+          },
+        },
+      },
+    });
+  }
 }

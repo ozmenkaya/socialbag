@@ -1,0 +1,14 @@
+{
+  "name": "Müşteri paneli",
+  "short_name": "Müşteri paneli",
+  "description": "Projelerinizi, planlanan paylaşımları ve onayınızı bekleyen tasarımları takip edin.",
+  "start_url": "/musteri",
+  "scope": "/musteri",
+  "display": "standalone",
+  "background_color": "#141320",
+  "theme_color": "#612BD3",
+  "icons": [
+    { "src": "/musteri-icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/musteri-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

@@ -117,7 +117,7 @@ export default async function ApprovalPage(props: {
       ))}
 
       <ApprovalAnswerClient
-        token={token}
+        url={`/public/approvals/${encodeURIComponent(token)}`}
         status={approval.status}
         note={approval.note}
       />

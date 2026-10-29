@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
+import { PostApproval } from '@prisma/client';
 import { ApprovalsRepository } from '@gitroom/nestjs-libraries/database/prisma/approvals/approvals.repository';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { ProjectsRepository } from '@gitroom/nestjs-libraries/database/prisma/projects/projects.repository';
@@ -34,10 +35,7 @@ export class ApprovalsService {
       throw new BadRequestException('Pass at least one post');
     }
 
-    const project = body.projectId
-      ? await this._projectsRepository.getBrand(org, body.projectId)
-      : null;
-    if (body.projectId && !project) {
+    if (body.projectId && !(await this._projectsRepository.getBrand(org, body.projectId))) {
       throw new BadRequestException('Project not found');
     }
 
@@ -59,6 +57,21 @@ export class ApprovalsService {
       }
       posts.push(post);
     }
+
+    // without a project, the one the channels belong to, so the design also
+    // waits on the customer portal of that project
+    const projectId =
+      body.projectId ||
+      (await (async () => {
+        const projects = await this._projectsRepository.getProjectsOfIntegrations(
+          org,
+          [...new Set(posts.map((p) => p.integrationId!).filter((p) => p))]
+        );
+        return projects.length === 1 ? projects[0].id : undefined;
+      })());
+    const project = projectId
+      ? await this._projectsRepository.getBrand(org, projectId)
+      : null;
 
     // nothing goes out before the customer answers
     for (const post of posts) {
@@ -131,6 +144,12 @@ export class ApprovalsService {
       throw new NotFoundException('Approval not found');
     }
 
+    // the link knows nothing of the portal
+    const { id, projectId, ...design } = await this.present(approval);
+    return design;
+  }
+
+  private async present(approval: PostApproval) {
     const project = approval.projectId
       ? await this._projectsRepository.getBrand(approval.organizationId, approval.projectId)
       : null;
@@ -164,6 +183,9 @@ export class ApprovalsService {
     }
 
     return {
+      id: approval.id,
+      projectId: approval.projectId,
+      createdAt: approval.createdAt,
       status:
         approval.status === 'pending' && (await this.isOutdated(approval))
           ? 'outdated'
@@ -187,6 +209,48 @@ export class ApprovalsService {
       throw new NotFoundException('Approval not found');
     }
 
+    return this.answer(approval, action, note);
+  }
+
+  // the designs of the projects a signed in customer follows
+  async getProjectsApprovals(org: string, projectIds: string[]) {
+    if (!projectIds.length) {
+      return [];
+    }
+    const list = await this._approvalsRepository.getApprovalsOfProjects(org, projectIds);
+    const approvals = [];
+    for (const approval of list) {
+      approvals.push(await this.present(approval));
+    }
+    return approvals;
+  }
+
+  async respondForProjects(
+    org: string,
+    projectIds: string[],
+    id: string,
+    action: 'approve' | 'revision',
+    note?: string
+  ) {
+    const approval = await this._approvalsRepository.getById(id);
+    if (
+      !approval ||
+      approval.organizationId !== org ||
+      !approval.projectId ||
+      !projectIds.includes(approval.projectId) ||
+      approval.status === 'replaced'
+    ) {
+      throw new NotFoundException('Approval not found');
+    }
+
+    return this.answer(approval, action, note);
+  }
+
+  private async answer(
+    approval: PostApproval,
+    action: 'approve' | 'revision',
+    note?: string
+  ) {
     if (action === 'revision' && !note?.trim()) {
       throw new BadRequestException('Write what should change');
     }

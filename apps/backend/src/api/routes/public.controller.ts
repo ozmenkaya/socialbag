@@ -32,6 +32,9 @@ import { ApprovalsService } from '@gitroom/nestjs-libraries/database/prisma/appr
 import { ApprovalAnswerDto } from '@gitroom/nestjs-libraries/dtos/approvals/approval.dto';
 import { ThrottlerRealIpGuard } from '@gitroom/nestjs-libraries/throttler/throttler.provider';
 import { Throttle } from '@nestjs/throttler';
+import { ClientsService } from '@gitroom/nestjs-libraries/database/prisma/clients/clients.service';
+import { PortalLoginDto } from '@gitroom/nestjs-libraries/dtos/clients/client.dto';
+import { setPortalCookie } from '@gitroom/backend/api/routes/portal.controller';
 
 const pump = promisify(pipeline);
 
@@ -43,7 +46,8 @@ export class PublicController {
     private _agentGraphInsertService: AgentGraphInsertService,
     private _postsService: PostsService,
     private _subscriptionService: SubscriptionService,
-    private _approvalsService: ApprovalsService
+    private _approvalsService: ApprovalsService,
+    private _clientsService: ClientsService
   ) {}
   @Post('/agent')
   async createAgent(@Body() body: { text: string; apiKey: string }) {
@@ -107,6 +111,29 @@ export class PublicController {
     @Body() body: ApprovalAnswerDto
   ) {
     return this._approvalsService.respond(token, body.action, body.note);
+  }
+
+  // the customer portal (/musteri)
+  @UseGuards(ThrottlerRealIpGuard)
+  @Throttle({ default: { limit: 10, ttl: 900000 } })
+  @Post('/portal/login')
+  async portalLogin(
+    @Res({ passthrough: true }) response: Response,
+    @Body() body: PortalLoginDto
+  ) {
+    const { token, expires } = await this._clientsService.login(
+      body.username,
+      body.password,
+      !!body.remember
+    );
+    setPortalCookie(response, token, expires);
+    return { signedIn: true };
+  }
+
+  @Post('/portal/logout')
+  portalLogout(@Res({ passthrough: true }) response: Response) {
+    setPortalCookie(response, '', new Date(0));
+    return { signedIn: false };
   }
 
   @Post('/t')

@@ -133,6 +133,24 @@ export class ProjectsRepository {
     });
   }
 
+  // the projects that post on one of these channels
+  getProjectsOfIntegrations(org: string, integrationIds: string[]) {
+    return this._project.model.project.findMany({
+      where: {
+        organizationId: org,
+        deletedAt: null,
+        integrations: {
+          some: {
+            integrationId: { in: integrationIds },
+          },
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+  }
+
   countIntegrations(org: string, ids: string[]) {
     return this._integration.model.integration.count({
       where: {
