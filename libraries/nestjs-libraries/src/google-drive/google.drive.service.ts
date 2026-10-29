@@ -150,6 +150,34 @@ export class GoogleDriveService {
     return response.ok ? Buffer.from(await response.arrayBuffer()) : undefined;
   }
 
+  // The service account has no storage of its own, so it cannot create files
+  // in a personal Drive: the designs are saved through an Apps Script web app
+  // the owner of the folders deployed under their own account
+  // (GOOGLE_DRIVE_BRIDGE_URL), the files belong to them
+  canSave() {
+    return !!process.env.GOOGLE_DRIVE_BRIDGE_URL && !!process.env.GOOGLE_DRIVE_BRIDGE_SECRET;
+  }
+
+  async saveFile(folderId: string, subfolder: string, name: string, fileUrl: string) {
+    const response = await fetch(process.env.GOOGLE_DRIVE_BRIDGE_URL!, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        secret: process.env.GOOGLE_DRIVE_BRIDGE_SECRET,
+        folderId,
+        subfolder,
+        name,
+        fileUrl,
+      }),
+      signal: AbortSignal.timeout(120000),
+    });
+    const data = await response.json().catch(() => ({ error: `The Drive bridge answered ${response.status}` }));
+    if (data.error) {
+      throw new Error(data.error);
+    }
+    return data as { id: string; url: string; folderUrl: string; existed: boolean };
+  }
+
   async download(id: string): Promise<Readable> {
     const { data } = await this.client().files.get(
       { fileId: id, alt: 'media', supportsAllDrives: true },

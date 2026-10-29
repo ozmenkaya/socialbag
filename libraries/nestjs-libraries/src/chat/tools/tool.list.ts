@@ -26,6 +26,7 @@ import { ProjectsListTool } from '@gitroom/nestjs-libraries/chat/tools/projects.
 import { ProjectFilesListTool } from '@gitroom/nestjs-libraries/chat/tools/project.files.list.tool';
 import { ProjectFileViewTool } from '@gitroom/nestjs-libraries/chat/tools/project.file.view.tool';
 import { ProjectFileImportTool } from '@gitroom/nestjs-libraries/chat/tools/project.file.import.tool';
+import { ProjectDriveSaveTool } from '@gitroom/nestjs-libraries/chat/tools/project.drive.save.tool';
 import { MediaFolderCreateTool } from '@gitroom/nestjs-libraries/chat/tools/media.folder.create.tool';
 import { MediaMoveTool } from '@gitroom/nestjs-libraries/chat/tools/media.move.tool';
 import { MediaViewTool } from '@gitroom/nestjs-libraries/chat/tools/media.view.tool';
@@ -63,6 +64,7 @@ export const toolList = [
   ProjectFilesListTool,
   ProjectFileViewTool,
   ProjectFileImportTool,
+  ProjectDriveSaveTool,
   MediaFolderCreateTool,
   MediaMoveTool,
   DesignVideoTool,

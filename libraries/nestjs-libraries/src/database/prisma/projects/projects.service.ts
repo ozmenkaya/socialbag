@@ -57,6 +57,10 @@ const fileKind = (mimeType: string) =>
 const MAX_FILES = 20000;
 const MAX_DEPTH = 20;
 
+// where the designs are saved in the Drive folders of the project, it is left
+// out of the archive so the designs are not taken for raw material
+export const DESIGNS_FOLDER = 'Socialbag Tasarımlar';
+
 // pictures are imported at this size at most, which also keeps raw camera
 // files under the upload limit
 const IMPORT_SIZE = 2560;
@@ -209,7 +213,7 @@ export class ProjectsService {
         const current = queue.shift()!;
         for (const entry of await this._googleDriveService.listFolder(current.id)) {
           if (entry.isFolder) {
-            if (current.depth < MAX_DEPTH) {
+            if (current.depth < MAX_DEPTH && !(current.depth === 0 && entry.name === DESIGNS_FOLDER)) {
               queue.push({
                 id: entry.id,
                 path: current.path ? `${current.path} / ${entry.name}` : entry.name,
@@ -447,6 +451,53 @@ export class ProjectsService {
 
       return sharp(preview).jpeg({ quality: 90 }).toBuffer();
     }
+  }
+
+  // saves media of the library (the designs of the project) into its Drive
+  // folder, in the designs folder
+  async saveToDrive(org: string, id: string, mediaIds: string[], driveFolder?: string) {
+    if (!this._googleDriveService.canSave()) {
+      throw new BadRequestException(
+        'Saving to Drive is not set up on this server (GOOGLE_DRIVE_BRIDGE_URL)'
+      );
+    }
+    await this.findProject(org, id);
+
+    const sources = (await this._projectsRepository.getSources(org, id)).filter(
+      (p) => p.type === 'google_drive'
+    );
+    const source = driveFolder
+      ? sources.find((p) => p.externalId === driveFolderId(driveFolder))
+      : sources[0];
+    if (!source) {
+      throw new BadRequestException(
+        driveFolder
+          ? 'This Drive folder is not linked to the project'
+          : 'The project has no Drive folder'
+      );
+    }
+
+    const media = await this._mediaService.getMediaByIds(org, [...new Set(mediaIds)]);
+    if (media.length !== new Set(mediaIds).size) {
+      throw new BadRequestException('Media not found');
+    }
+
+    const saved = [];
+    for (const item of media) {
+      try {
+        const file = await this._googleDriveService.saveFile(
+          source.externalId,
+          DESIGNS_FOLDER,
+          item.originalName || item.name,
+          item.path
+        );
+        saved.push({ mediaId: item.id, url: file.url, existed: file.existed, folderUrl: file.folderUrl });
+      } catch (err) {
+        saved.push({ mediaId: item.id, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+
+    return saved;
   }
 
   // the brand the template designs of the project are made with
