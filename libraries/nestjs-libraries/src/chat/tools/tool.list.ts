@@ -20,6 +20,7 @@ import { DeletePostTool } from '@gitroom/nestjs-libraries/chat/tools/delete.post
 import { UploadWidgetTool } from '@gitroom/nestjs-libraries/chat/tools/upload.widget.tool';
 import { UploadWidgetTicketTool } from '@gitroom/nestjs-libraries/chat/tools/upload.widget.ticket.tool';
 import { UploadWidgetStatusTool } from '@gitroom/nestjs-libraries/chat/tools/upload.widget.status.tool';
+import { UploadLinkTool } from '@gitroom/nestjs-libraries/chat/tools/upload.link.tool';
 import { MediaFoldersListTool } from '@gitroom/nestjs-libraries/chat/tools/media.folders.list.tool';
 import { ProjectsListTool } from '@gitroom/nestjs-libraries/chat/tools/projects.list.tool';
 import { ProjectFilesListTool } from '@gitroom/nestjs-libraries/chat/tools/project.files.list.tool';
@@ -70,4 +71,5 @@ export const toolList = [
   UploadWidgetTool,
   UploadWidgetTicketTool,
   UploadWidgetStatusTool,
+  UploadLinkTool,
 ];
