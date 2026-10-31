@@ -179,6 +179,24 @@ export class ProjectsService {
     return { started: sources.length };
   }
 
+  // the hourly sync of the orchestrator, one project failing leaves the others
+  async syncAllProjects() {
+    if (!this._googleDriveService.isEnabled()) {
+      return { started: 0 };
+    }
+
+    let started = 0;
+    for (const project of await this._projectsRepository.getProjectsWithDrive()) {
+      try {
+        started += (await this.syncProject(project.organizationId, project.id)).started;
+      } catch (err) {
+        Logger.error(`Could not sync project ${project.id}: ${err}`);
+      }
+    }
+
+    return { started };
+  }
+
   private async syncSource(
     org: string,
     projectId: string,

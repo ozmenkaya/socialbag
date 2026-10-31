@@ -16,6 +16,19 @@ export class InfiniteWorkflowRegister implements OnModuleInit {
           });
       } catch (err) {}
     }
+
+    if (!!process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE) {
+      try {
+        await this._temporalService.client
+          ?.getRawClient()
+          ?.workflow?.start('driveSyncWorkflow', {
+            workflowId: 'drive-sync-workflow',
+            taskQueue: 'main',
+            // Keep a running workflow, so a restart does not sync again
+            workflowIdConflictPolicy: 'USE_EXISTING',
+          });
+      } catch (err) {}
+    }
   }
 }
 

@@ -315,6 +315,23 @@ export class ProjectsRepository {
     });
   }
 
+  getProjectsWithDrive() {
+    return this._project.model.project.findMany({
+      where: {
+        deletedAt: null,
+        sources: {
+          some: {
+            type: 'google_drive',
+          },
+        },
+      },
+      select: {
+        id: true,
+        organizationId: true,
+      },
+    });
+  }
+
   getSources(org: string, projectId: string) {
     return this._projectSource.model.projectSource.findMany({
       where: {
